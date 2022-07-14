@@ -1,0 +1,20 @@
+{
+    "contributions": [
+        {
+            "id": "jarhughe.quicksteps.quicksteps-work-item-form-group",
+            "type": "ms.vss-work-web.work-item-form-control",
+            "description": "Custom work item form group",
+            "targets": [
+                "ms.vss-work-web.work-item-form"
+            ],
+            "properties": {
+                "name": "Microsoft QuickSteps",
+                "uri": "dist/Main/index.html",
+                "height": 500
+            }
+        }
+    ],
+    "scopes": [
+        "vso.work"
+    ]
+}

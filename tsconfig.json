@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "charset": "utf8",
+        "experimentalDecorators": true,
+        "module": "esnext",
+        "moduleResolution": "node",
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "strict": true,
+        "target": "es2017",
+        "rootDir": "src/",
+        "outDir": "dist/",
+        "jsx": "react",
+        "lib": [
+          "es5",
+          "es6",
+          "dom",
+          "es2015.promise"
+        ],
+        "types": [
+            "react",
+            "jest",
+            "node"
+        ],
+        "esModuleInterop": true
+    }
+}

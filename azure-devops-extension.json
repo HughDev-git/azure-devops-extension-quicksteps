@@ -1,0 +1,35 @@
+{
+    "manifestVersion": 1,
+    "id": "quicksteps",
+    "publisher": "jarhughe",
+    "version": "1.0.127",
+    "name": "Microsoft QuickSteps",
+    "description": "Azure DevOps Extension to simplify the process of checklist items for records with parent/child relationships",
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "icons": {
+        "default": "logo.png"
+    },
+    "content": {
+        "details": {
+            "path": "overview.md"
+        }
+    },
+    "files": [
+        {
+            "path": "static",
+            "addressable": true
+        },
+        {
+            "path": "dist",
+            "addressable": true
+        }
+    ],
+    "categories": [
+        "Azure Boards"
+    ]
+}
+        
