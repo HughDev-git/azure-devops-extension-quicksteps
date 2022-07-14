@@ -83,7 +83,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     return (
       <div className="MainDiv">
         <Icon iconName="FileSymlink" /> <Link href="https://www.microsoft.com/" subtle={true} className="instructions-class">
-           Go To Instructions
+           Open Instructions
         </Link>
         <ProgressIndicator
           label={
