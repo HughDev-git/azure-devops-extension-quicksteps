@@ -22,7 +22,6 @@ import {
 import { Tooltip } from "azure-devops-ui/TooltipEx";
 import { MessageCard, MessageCardSeverity } from "azure-devops-ui/MessageCard";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
-import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { showRootComponent } from "../../Common";
 import * as SDK from "azure-devops-extension-sdk";
 import {
@@ -34,7 +33,12 @@ import { initializeIcons } from '@fluentui/font-icons-mdl2';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { Checkbox } from "azure-devops-ui/Checkbox";
+import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking/WorkItemTrackingClient";
+import {WikiRestClient} from "azure-devops-extension-api/Wiki/WikiClient";
+import { getClient } from "azure-devops-extension-api";
+import { Project } from "./CurrentProject"
 import "./quicksteps.scss";
+import { WorkItemExpand } from "azure-devops-node-api/interfaces/WorkItemTrackingInterfaces";
 
 
 initializeIcons();
@@ -49,7 +53,41 @@ interface MyStates {
   nextStep: number;
   nextStepText: string;
   isRenderReady: boolean;
+  CBDoesNotApply: boolean;
+  wikiUrl: string;
 }
+
+// interface WorkItemExpand {
+//   /**
+//    * Default behavior.
+//    */
+//   None = 0,
+//   /**
+//    * Relations work item expand.
+//    */
+//   Relations = 1,
+//   /**
+//    * Fields work item expand.
+//    */
+//   Fields = 2,
+//   /**
+//    * Links work item expand.
+//    */
+//   Links = 3,
+//   /**
+//    * Expands all.
+//    */
+//   All = 4
+// }
+
+// interface GetWorkItems {
+//   id: number;
+//   project: string;
+//   fields: string[];
+//   asOf: Date;
+//   expand: WorkItemTracking.WorkItemExpand;
+//   errorPolicy:  WorkItemTracking.WorkItemErrorPolicy;
+// }
 
 export class QuickSteps extends React.Component<{}, MyStates> {
   constructor(props: {}) {
@@ -62,7 +100,9 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       nextStep: 0,
       nextStepText: "",
       percentComplete: 0,
-      isRenderReady: false
+      isRenderReady: false,
+      CBDoesNotApply: false,
+      wikiUrl: "",
     };
   }
   
@@ -70,7 +110,9 @@ export class QuickSteps extends React.Component<{}, MyStates> {
   public componentDidMount() {
     SDK.init().then(() => {
     this.fetchAllJSONData().then(() => {
-      this.determinePercentComplete()
+      this.getWiki();
+      this.determineIfNotApply();
+      this.determinePercentComplete();
       this.isRenderReady();
       })
     })
@@ -86,8 +128,8 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     if (this.state.isRenderReady){
     return (
       <div className="MainDiv">
-        <Icon iconName="FileSymlink" /> <Link href="https://www.microsoft.com/" subtle={true} className="instructions-class">
-           Open Instructions
+        <Icon iconName="FileSymlink" /> <Link href={this.state.wikiUrl} subtle={true} target="_blank" className="instructions-class">
+           Click For Instructions
         </Link>
         <ProgressIndicator
           label={
@@ -119,15 +161,15 @@ export class QuickSteps extends React.Component<{}, MyStates> {
             // onActivate={(event, row) =>
           />
         </Card>
-        <Card
-          className="flex-grow bolt-table-card"
+        <div
+          className="checkboxNotApply"
         >
            <Checkbox
                 onChange={(event, checked) => (this.notApplyCheckbox(checked)) }
                 checked={activityNotApply}
-                label="This activity does not apply to me"
+                label="This onboarding requirement does not apply to me"
             />
-        </Card>
+        </div>
         <div style={{ marginTop: "10px"}}>
           {this.state.isCoachMarkVisible ? (
             <MessageCard
@@ -143,22 +185,125 @@ export class QuickSteps extends React.Component<{}, MyStates> {
             ""
           )}
         </div>
+        <div style={{ marginTop: "10px"}}>
+          {this.state.CBDoesNotApply ? (
+            <MessageCard
+              //className="flex-self-stretch"
+              //onDismiss={this.onDismissCoach2.bind(this)}
+              severity={MessageCardSeverity.Warning}
+            >
+              You have marked this requirement as not applicable. If this requirement does apply to you in the future, don't forget to uncheck the box above.
+            </MessageCard>
+          ) : (
+            ""
+          )}
+        </div>
       </div> 
     );} else {
       return (<div className="flex-row"></div>)
     }
   }
 
-  public async notApplyCheckbox(checked: boolean){
+  public async determineIfNotApply(){
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService
     )
     let currentState = (await workItemFormService.getFieldValue("System.State")).toString();
+    if (currentState === "N/A - This requirement does not apply to me") {
+      activityNotApply.value = true
+      this.setState({
+        CBDoesNotApply: true
+        // StoryRecordsArray: storiesplaceholder
+      });
+    } else {
+      activityNotApply.value = false
+      this.setState({
+        CBDoesNotApply: false
+        // StoryRecordsArray: storiesplaceholder
+      });
+    }
+  }
+
+  public async getWiki(){
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    );
+    const organization = await SDK.getHost()
+    const project = await Project
+    const client = getClient(WorkItemTrackingRestClient);
+    const wikiclient = getClient(WikiRestClient);
+    let relations = await workItemFormService.getWorkItemRelations();
+    for (let item of relations){
+      console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+      if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+        //Get the id from end of string
+        var matches : number;
+        matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+        console.log(matches);
+        client.getWorkItemTypeFieldsWithReferences
+        let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
+        let parentRelations = (await workitem).relations
+        console.log(parentRelations)
+        for (let item of parentRelations) {
+          if (item.rel === "ArtifactLink") {
+            console.log(item)
+            //let allWikis = (await wikiclient.getAllWikis())
+            //We need to parse URL to get wiki ID to make the next call
+            //start of ID
+            let string = item.url
+            //console.log("STRING HERE :   " +string)
+            let wikibroken = string.split("%2F")
+            console.log(wikibroken)
+            let wikiID = wikibroken[1]
+            //console.log("We are in wiki loop")
+            //console.log(wikiID)
+            let wikiURL = "https://dev.azure.com/"+organization.name+"/"+project?.name+"/_wiki/wikis/"+ wikiID
+            //console.log(project)
+            //let wiki = (await wikiclient.getAllWikis())
+            //let wiki= (await wikiclient.getWiki(wikiID[1],project?.id))
+            //console.log(wiki)
+            //console.log(wiki.name)
+            this.setState({
+              wikiUrl: wikiURL,
+            });
+          }
+        }
+        // let title = (await workitem).fields["System.Title"]
+        // console.log(parentRelations)
+      //   this.setState({
+      //     FormHasParent: "1",
+      //     ParentItemTitle: title
+      //   });
+      // } else {
+      //   this.setState({
+      //     FormHasParent: "0"
+      //   });
+      // }
+      // console.log("Attributes: "+b.attributes+" ||| Link Type: "+b.rel+" ||| URL: "+b.url)
+    }
+  }
+}
+
+  public async notApplyCheckbox(checked: boolean){
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    )
+    let responses = (await UserResponeItems)
+    let currentState = (await workItemFormService.getFieldValue("System.State")).toString();
+    console.log(currentState)
     activityNotApply.value = checked
     if (checked){
       workItemFormService.setFieldValues({"System.State": "N/A - This requirement does not apply to me"});
+      this.setState({
+        CBDoesNotApply: true
+        // StoryRecordsArray: storiesplaceholder
+      });
     } else {
-      workItemFormService.setFieldValues({"System.State": currentState});
+      this.setRemainingADOFields(responses)
+      this.setState({
+        CBDoesNotApply: false
+        // StoryRecordsArray: storiesplaceholder
+      });
     }
   }
   public onDismissCoach() {
@@ -171,12 +316,17 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService
     )
+    activityNotApply.value = false
+    this.setState({
+      CBDoesNotApply: false
+      // StoryRecordsArray: storiesplaceholder
+    });
     //alert(pipelineItems[e.index].step);
     //If it is the first step selected and not complete, mark complete
     let responses = (await UserResponeItems)
     this.setMarks(e, responses);
     //this.determineIfAwaitExternalProcess(e, responses);
-    this.setRemainingADOFields(e, responses)
+    this.setRemainingADOFields(responses)
     // console.log(UserResponeItems.length);
     let stepsplaceholder = new Array<IPipelineItem<{}>>();
     for (let entry of responses) {
@@ -211,7 +361,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
   //     // StoryRecordsArray: storiesplaceholder
   //   });
   // }
-  public async setRemainingADOFields(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
+  public async setRemainingADOFields(responses: IPipelineItem<{}>[]){
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService)
       //Is pending external

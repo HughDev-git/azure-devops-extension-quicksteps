@@ -10,7 +10,7 @@
             "properties": {
                 "name": "Microsoft QuickSteps",
                 "uri": "dist/Main/index.html",
-                "height": 500
+                "height": 600
             }
         }
     ],
