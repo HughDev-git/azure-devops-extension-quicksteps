@@ -32,10 +32,13 @@ import {
 import { Link } from "azure-devops-ui/Link";
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
 import { Icon } from '@fluentui/react/lib/Icon';
+import { ObservableValue } from "azure-devops-ui/Core/Observable";
+import { Checkbox } from "azure-devops-ui/Checkbox";
 import "./quicksteps.scss";
 
 
 initializeIcons();
+const activityNotApply = new ObservableValue<boolean>(false);
 
 interface MyStates {
   StepRecordsItemProvider: ArrayItemProvider<IPipelineItem>;
@@ -62,6 +65,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       isRenderReady: false
     };
   }
+  
 
   public componentDidMount() {
     SDK.init().then(() => {
@@ -115,6 +119,15 @@ export class QuickSteps extends React.Component<{}, MyStates> {
             // onActivate={(event, row) =>
           />
         </Card>
+        <Card
+          className="flex-grow bolt-table-card"
+        >
+           <Checkbox
+                onChange={(event, checked) => (this.notApplyCheckbox(checked)) }
+                checked={activityNotApply}
+                label="This activity does not apply to me"
+            />
+        </Card>
         <div style={{ marginTop: "10px"}}>
           {this.state.isCoachMarkVisible ? (
             <MessageCard
@@ -133,6 +146,19 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       </div> 
     );} else {
       return (<div className="flex-row"></div>)
+    }
+  }
+
+  public async notApplyCheckbox(checked: boolean){
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    )
+    let currentState = (await workItemFormService.getFieldValue("System.State")).toString();
+    activityNotApply.value = checked
+    if (checked){
+      workItemFormService.setFieldValues({"System.State": "N/A - This requirement does not apply to me"});
+    } else {
+      workItemFormService.setFieldValues({"System.State": currentState});
     }
   }
   public onDismissCoach() {
