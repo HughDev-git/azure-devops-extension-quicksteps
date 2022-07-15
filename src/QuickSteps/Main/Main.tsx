@@ -258,10 +258,10 @@ export class QuickSteps extends React.Component<{}, MyStates> {
             //console.log("We are in wiki loop")
             //console.log(wikiID)
             let wikiURL = "https://dev.azure.com/"+organization.name+"/"+project?.name+"/_wiki/wikis/"+ wikiID
-            //console.log(project)
-            //let wiki = (await wikiclient.getAllWikis())
+            console.log(wikiURL)
+            let wiki = (await wikiclient.getAllWikis())
             //let wiki= (await wikiclient.getWiki(wikiID[1],project?.id))
-            //console.log(wiki)
+            console.log(wiki)
             //console.log(wiki.name)
             this.setState({
               wikiUrl: wikiURL,
