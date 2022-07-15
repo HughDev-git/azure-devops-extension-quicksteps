@@ -242,44 +242,12 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         console.log(matches);
         client.getWorkItemTypeFieldsWithReferences
         let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
-        let parentRelations = (await workitem).relations
-        console.log(parentRelations)
-        for (let item of parentRelations) {
-          if (item.rel === "ArtifactLink") {
-            console.log(item)
-            //let allWikis = (await wikiclient.getAllWikis())
-            //We need to parse URL to get wiki ID to make the next call
-            //start of ID
-            let string = item.url
-            //console.log("STRING HERE :   " +string)
-            let wikibroken = string.split("%2F")
-            console.log(wikibroken)
-            let wikiID = wikibroken[1]
-            //console.log("We are in wiki loop")
-            //console.log(wikiID)
-            let wikiURL = "https://dev.azure.com/"+organization.name+"/"+project?.name+"/_wiki/wikis/"+ wikiID
-            console.log(wikiURL)
-            let wiki = (await wikiclient.getAllWikis())
-            //let wiki= (await wikiclient.getWiki(wikiID[1],project?.id))
-            console.log(wiki)
-            //console.log(wiki.name)
-            this.setState({
-              wikiUrl: wikiURL,
-            });
-          }
-        }
-        // let title = (await workitem).fields["System.Title"]
-        // console.log(parentRelations)
-      //   this.setState({
-      //     FormHasParent: "1",
-      //     ParentItemTitle: title
-      //   });
-      // } else {
-      //   this.setState({
-      //     FormHasParent: "0"
-      //   });
-      // }
-      // console.log("Attributes: "+b.attributes+" ||| Link Type: "+b.rel+" ||| URL: "+b.url)
+        let UrlToWiki = (await workitem).fields["Custom.URLtoWiki"]
+        //let parentRelations = (await workitem).relations
+        console.log(UrlToWiki)
+        this.setState({
+          wikiUrl: UrlToWiki,
+        });
     }
   }
 }
