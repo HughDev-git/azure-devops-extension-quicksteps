@@ -29,6 +29,7 @@ import {
   WorkItemTrackingServiceIds,
 } from "azure-devops-extension-api/WorkItemTracking";
 import { Link } from "azure-devops-ui/Link";
+import {ITaskItem} from "./StepSchema"
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
@@ -42,9 +43,10 @@ import { WorkItemExpand } from "azure-devops-node-api/interfaces/WorkItemTrackin
 
 
 initializeIcons();
-const activityNotApply = new ObservableValue<boolean>(false);
 
-interface MyStates {
+
+
+interface MyUserStates {
   StepRecordsItemProvider: ArrayItemProvider<IPipelineItem>;
   isCoachMarkVisible: boolean;
   percentComplete: any;
@@ -56,40 +58,18 @@ interface MyStates {
   CBDoesNotApply: boolean;
   wikiUrl: string;
 }
+interface MyAdminStates {
+  StepRecordsItemProvider: ArrayItemProvider<ITaskItem>;
+  removeStepDisabled: boolean;
+  moveUpStepDisabled: boolean;
+  moveDownStepDisabled: boolean;
+  panelExpanded: boolean; 
+}
 
-// interface WorkItemExpand {
-//   /**
-//    * Default behavior.
-//    */
-//   None = 0,
-//   /**
-//    * Relations work item expand.
-//    */
-//   Relations = 1,
-//   /**
-//    * Fields work item expand.
-//    */
-//   Fields = 2,
-//   /**
-//    * Links work item expand.
-//    */
-//   Links = 3,
-//   /**
-//    * Expands all.
-//    */
-//   All = 4
-// }
+export class QuickStepAdmin extends React.Component<{}, MyAdminStates>{
 
-// interface GetWorkItems {
-//   id: number;
-//   project: string;
-//   fields: string[];
-//   asOf: Date;
-//   expand: WorkItemTracking.WorkItemExpand;
-//   errorPolicy:  WorkItemTracking.WorkItemErrorPolicy;
-// }
-
-export class QuickSteps extends React.Component<{}, MyStates> {
+}
+export class QuickStepsUser extends React.Component<{}, MyUserStates> {
   constructor(props: {}) {
     super(props);
     this.state = {
@@ -105,6 +85,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       wikiUrl: "",
     };
   }
+
   
 
   public componentDidMount() {
@@ -117,6 +98,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       })
     })
   }
+  private activityNotApply = new ObservableValue<boolean>(false);
 
   public isRenderReady(){
     this.setState({
@@ -166,7 +148,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         >
            <Checkbox
                 onChange={(event, checked) => (this.notApplyCheckbox(checked)) }
-                checked={activityNotApply}
+                checked={this.activityNotApply}
                 label="This onboarding requirement does not apply to me"
             />
         </div>
@@ -210,13 +192,13 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     )
     let currentState = (await workItemFormService.getFieldValue("System.State")).toString();
     if (currentState === "N/A - This requirement does not apply to me") {
-      activityNotApply.value = true
+      this.activityNotApply.value = true
       this.setState({
         CBDoesNotApply: true
         // StoryRecordsArray: storiesplaceholder
       });
     } else {
-      activityNotApply.value = false
+      this.activityNotApply.value = false
       this.setState({
         CBDoesNotApply: false
         // StoryRecordsArray: storiesplaceholder
@@ -259,7 +241,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     let responses = (await UserResponeItems)
     let currentState = (await workItemFormService.getFieldValue("System.State")).toString();
     console.log(currentState)
-    activityNotApply.value = checked
+    this.activityNotApply.value = checked
     if (checked){
       workItemFormService.setFieldValues({"System.State": "N/A - This requirement does not apply to me"});
       this.setState({
@@ -284,7 +266,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService
     )
-    activityNotApply.value = false
+    this.activityNotApply.value = false
     this.setState({
       CBDoesNotApply: false
       // StoryRecordsArray: storiesplaceholder
@@ -297,6 +279,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     this.setRemainingADOFields(responses)
     // console.log(UserResponeItems.length);
     let stepsplaceholder = new Array<IPipelineItem<{}>>();
+    let limitedArray = new Array();
     for (let entry of responses) {
       // let AreaPath = new String(entry.fields["System.AreaPath"])
       // let cleanedAreaPath = AreaPath.split("\\")[1]
@@ -305,6 +288,10 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         title: entry.title,
         status: entry.status,
         type: entry.type
+      });
+      limitedArray.push({
+        step: entry.step,
+        status: entry.status
       });
       //console.log(JSON.stringify(this.state.StepRecordsItemProvider))
       // let total = stepsplaceholder.length;
@@ -318,7 +305,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       });
       // alert(e.index);
     }
-    let stringifiedJSON = JSON.stringify(this.state.StepRecordsItemProvider);
+    let stringifiedJSON = JSON.stringify(limitedArray);
     workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": stringifiedJSON});
   }
   // public updatePercentComplete() {
@@ -652,7 +639,8 @@ function renderNameColumn(
   
 }
 
-export default QuickSteps;
 
-showRootComponent(<QuickSteps/>);
+export default QuickStepsUser;
+
+showRootComponent(<QuickStepsUser/>);
 

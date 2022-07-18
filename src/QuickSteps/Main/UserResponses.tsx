@@ -17,7 +17,7 @@ import {
   TableColumnLayout
 } from "azure-devops-ui/Table";
 import { css } from "azure-devops-ui/Util";
-import { schemaItems, ADOSchemaToString } from "./StepSchema";
+import { allSchemaItems, mySchemaItemsStatus} from "./StepSchema";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import {
     IWorkItemFormService,
@@ -25,7 +25,6 @@ import {
   } from "azure-devops-extension-api/WorkItemTracking";
   import { IListBoxItem} from "azure-devops-ui/ListBox";
   import * as SDK from "azure-devops-extension-sdk";
-  import { ADOSchema } from "./StepSchema";
 
 export const renderStatus = (className?: string) => {
   return (
@@ -73,26 +72,6 @@ const UserResponses = [
   }
 ];
 
-// function getUserStepStatus() {
-//   const responsePlaceholder = new Array<IPipelineItem<{}>>();
-//   //var parseschemaData = JSON.parse(ADOSchemaToString);
-//   //console.log(ADOSchemaToString);
-//   schemaItems.forEach(function (value) {
-//     //placeholder
-//     // let responsePlaceholder = new Array<IPipelineItem<{}>>();
-//     //find the response for this item
-//     let thisStep = UserResponses.find((i) => i.step === value.step);
-//     //push to placeholder
-//     responsePlaceholder.push({
-//       step: value.step,
-//       title: value.title,
-//       status: thisStep?.status || "",
-//       type: value.type
-//     });
-//   });
-//   return responsePlaceholder;
-// }
-
 let results = GetAllMyResponses()
 let mergedSchemaAndResults = MergeSchemaAndResults(results)
   
@@ -126,27 +105,31 @@ async function MergeSchemaAndResults(results: Promise<string>){
     //second clean for reinsert of quotes
     const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"'); 
     // console.log("CLEANED RESPONSE 5 :   " + cleanedResponses2)
-    const schema = (await ADOSchema)
+    // const schema = (await ADOSchema)
     var parsedResponse = JSON.parse(cleanedResponses2)
     // console.log("RESPONSE 6 :   " + parsedResponse)
-    for (let entry of parsedResponse.items) {
+    for (let entry of parsedResponse) {
         // let AreaPath = new String(entry.fields["System.AreaPath"])
-        // let cleanedAreaPath = AreaPath.split("\\")[1]
+        let itemToMatch = await returnMatchedSchemaRecord(entry.step);
         stepsplaceholder.push({
           step: entry.step,
-          title: returnMatchedSchemaRecord(entry.step)?.title || "", //We will set this from schema
+          title: itemToMatch?.title || "", //We will set this from schema
           status: entry.status,
-          type: returnMatchedSchemaRecord(entry.step)?.type || "", //We will set this from schema
+          type: itemToMatch?.type || "", //We will set this from schema
         });
       }
 return stepsplaceholder
 }
 
-function returnMatchedSchemaRecord(item: any){
+async function returnMatchedSchemaRecord(item: any){
+  console.log("What we are looking for: " + item)
   // console.log("First Log"+item)
-  let a = schemaItems.find((i: { step: string; }) => i.step === item)
-  // console.log("Second Log"+a)
-  return a
+  let schemaRetrievalStatus = await mySchemaItemsStatus
+  if (schemaRetrievalStatus){
+    let a = allSchemaItems.find((i: { step: string; }) => i.step === item)
+    return a
+  }
+
 }
 
 export const UserResponeItems = mergedSchemaAndResults

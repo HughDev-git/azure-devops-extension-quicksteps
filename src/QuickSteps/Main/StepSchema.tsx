@@ -1,57 +1,120 @@
-export const schemaItems = [
-  {
-    step: "1",
-    title: "Complete SAAR-N & Digitally Sign",
-    type: "internal"
-  },
-  {
-    step: "2",
-    title: "Email SAAR-N",
-    type: "internal"
-  },
-  {
-    step: "3",
-    title: "Await Email SAAR-N Completion",
-    type: "external"
-  },
-  {
-    step: "4",
-    title: "Validate Login to Account",
-    type: "internal"
-  },
-  {
-    step: "5",
-    title: "Validate Roles on Account",
-    type: "internal"
-  },
-  {
-    step: "6",
-    title: "Mention CSAM in Comments upon completion",
-    type: "internal"
+import { getClient } from "azure-devops-extension-api";
+import {
+  IWorkItemFormService,
+  WorkItemExpand,
+  WorkItemTrackingRestClient,
+  WorkItemTrackingServiceIds,
+} from "azure-devops-extension-api/WorkItemTracking";
+import * as SDK from "azure-devops-extension-sdk";
+import { Project } from "./CurrentProject";
+
+export interface ITaskItem {
+  name: string;
+  type: string;
+}
+interface SchemaInterface {
+  step: string,
+  title: string,
+  type: string
+ }
+
+export const allSchemaItems: SchemaInterface[] = []
+// export const schemaItems = [
+//   {
+//     step: "1",
+//     title: "Complete SAAR-N & Digitally Sign",
+//     type: "internal"
+//   },
+//   {
+//     step: "2",
+//     title: "Email SAAR-N",
+//     type: "internal"
+//   },
+//   {
+//     step: "3",
+//     title: "Await Email SAAR-N Completion",
+//     type: "external"
+//   },
+//   {
+//     step: "4",
+//     title: "Validate Login to Account",
+//     type: "internal"
+//   },
+//   {
+//     step: "5",
+//     title: "Validate Roles on Account",
+//     type: "internal"
+//   },
+//   {
+//     step: "6",
+//     title: "Mention CSAM in Comments upon completion",
+//     type: "internal"
+//   }
+// ];
+
+let isSchemaReady = GetSchema()
+  
+async function GetSchema() {
+  let response = await Schema()
+  return response
+}
+async function RetrieveResponses(){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      );
+      const organization = await SDK.getHost()
+      const project = await Project
+      const client = getClient(WorkItemTrackingRestClient);
+      let relations = await workItemFormService.getWorkItemRelations();
+      for (let item of relations){
+        console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+        if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+          //Get the id from end of string
+          var matches : number;
+          matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+          console.log(matches);
+          client.getWorkItemTypeFieldsWithReferences
+          let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
+          let schemaString = (await workitem).fields["Custom.MSQuickStepSchema"]
+          return schemaString
   }
-];
-
-export const ADOSchema = {
-  items: [
-    {
-      step: "1",
-      title: "Chalk-Talk / Classroom / Non-MIP / Training",
-      type: "internal"
-    },
-    { step: "2", title: "Migrate / Move / Modernize", type: "internal" },
-    { step: "3", title: "Reactive / Remediate / Repair", type: "internal" },
-    {
-      step: "4",
-      title: "Proactive / Preventative / Discovery",
-      type: "external"
-    },
-    { step: "5", title: "Review / Documentation / Draft", type: "internal" },
-    {
-      step: "6",
-      title: "Meeting / Discussion / Collaboration",
-      type: "internal"
+}
     }
-  ]
-};
+async function Schema(){
+  const data = await RetrieveResponses()
+  const cleanedResponses = data.replace(/(<([^>]+)>)/ig, ""); 
+  //second clean for reinsert of quotes
+  const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"'); 
+  let parsedData = JSON.parse(cleanedResponses2)
+  for(let item of parsedData.items){
+    console.log(item)
+    allSchemaItems.push({step: item.step, title: item.title, type: item.type})
+  }
+  return true
+  // console.log("RESPONSE 3 :   " + data)
+}
 
-export const ADOSchemaToString = ADOSchema.items.toString();
+// async function getSchema(){
+//   const workItemFormService = await SDK.getService<IWorkItemFormService>(
+//     WorkItemTrackingServiceIds.WorkItemFormService
+//   );
+//   const organization = await SDK.getHost()
+//   const project = await Project
+//   const client = getClient(WorkItemTrackingRestClient);
+//   let relations = await workItemFormService.getWorkItemRelations();
+//   for (let item of relations){
+//     console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+//     if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+//       //Get the id from end of string
+//       var matches : number;
+//       matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+//       console.log(matches);
+//       client.getWorkItemTypeFieldsWithReferences
+//       let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
+//       let schemaString = (await workitem).fields["Custom.MSQuickStepSchema"]
+//       return schemaString
+//   }
+// }
+// }
+
+ export const mySchemaItemsStatus = isSchemaReady;
