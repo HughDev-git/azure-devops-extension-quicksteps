@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "quicksteps",
     "publisher": "jarhughe",
-    "version": "1.0.180",
+    "version": "1.0.185",
     "name": "Microsoft QuickSteps",
     "description": "Azure DevOps Extension to simplify the process of checklist items for records with parent/child relationships",
     "targets": [

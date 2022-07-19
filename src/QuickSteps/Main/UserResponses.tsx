@@ -84,6 +84,7 @@ async function RetrieveResponses(){
         WorkItemTrackingServiceIds.WorkItemFormService
       )
         let responses = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses")).toString();
+        console.log(responses)
         //let responses2 = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses"));
         //console.log("RESPONSE 1 :  " + responses)
         //console.log("RESPONSE 2 :  " + responses2)

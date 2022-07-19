@@ -90,14 +90,16 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
 
   public componentDidMount() {
     SDK.init().then(() => {
-    this.fetchAllJSONData().then(() => {
+      this.determineIfJSONReady().then(() => {
+      this.fetchAllJSONData().then(() => {
       this.getWiki();
       this.determineIfNotApply();
       this.determinePercentComplete();
       this.isRenderReady();
       })
     })
-  }
+  })
+}
   private activityNotApply = new ObservableValue<boolean>(false);
 
   public isRenderReady(){
@@ -106,6 +108,9 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
       // StoryRecordsArray: storiesplaceholder
     });
   }
+  // public async determineifSchemaPresent(){
+
+  // }
   public render(): JSX.Element {
     if (this.state.isRenderReady){
     return (
@@ -526,6 +531,17 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
 
   public async fetchAllJSONData() {
      let stepsplaceholder = new Array<IPipelineItem<{}>>();
+     //First check if schema is null before building steps. If null, we need to pull it down from the parent
+    //  let schemaIsDefinedthis.getStepsSchema
+    //  if (userResponses.length == 0) {
+    //   console.log("Entering no schema")
+    //   //no schema present. Get it.
+    //   this.getStepsSchema();
+    //  }
+    //  let schemaisReady = (await this.getStepsSchema)
+    //  if (schemaisReady) {
+    //   console.log("Entering schema ready")
+    //   console.log("Schema Ready Value:  "schemaisReady)
     const responses = (await UserResponeItems);
     // const schema = (await ADOSchema)
     // var parseRespones = JSON.parse(responses)
@@ -545,8 +561,40 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
         // StoryRecordsArray: storiesplaceholder
       });
     }
-    // console.log("123");
   }
+    // console.log("123");
+  
+
+  public async determineIfJSONReady(){
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService)
+      let userResponses = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses")).toString();
+      if(userResponses.length == 0) {
+      const client = getClient(WorkItemTrackingRestClient);
+      let relations = await workItemFormService.getWorkItemRelations();
+      for (let item of relations){
+        // console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+        if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+          //Get the id from end of string
+          var matches : number;
+          matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+          console.log(matches);
+          client.getWorkItemTypeFieldsWithReferences
+          let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
+          let schemaString = (await workitem).fields["Custom.MSQuickStepResponsesSchema"]
+          const cleanedResponses = schemaString.replace(/(<([^>]+)>)/ig, ""); 
+          //second clean for reinsert of quotes
+          const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"'); 
+          workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": cleanedResponses2});
+          workItemFormService.save();
+       }
+    }
+console.log("Added JSON from parent")
+  } else {
+    console.log("JSON laready present. Skipping")
+  }
+
+}
   private columns: ITableColumn<IPipelineItem> []= [
     {
       id: "title",
