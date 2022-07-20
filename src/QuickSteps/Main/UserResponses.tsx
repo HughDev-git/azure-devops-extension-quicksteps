@@ -140,11 +140,12 @@ async function returnMatchedSchemaRecord(item: any){
   let schemaRetrievalStatus = await mySchemaItemsStatus
   if (schemaRetrievalStatus){
     let a = allSchemaItems.find((i: { step: string; }) => i.step === item)
+    console.log("We found item: " + item)
     return a
   }
 
 }
-
+export const unMergedCleanResponsesFromParent = parentResults
 export const UserResponeItemsLocal = mergedSchemaAndResultsLocal
 export const UserResponeItemsParent = mergedSchemaAndResultsParent
 

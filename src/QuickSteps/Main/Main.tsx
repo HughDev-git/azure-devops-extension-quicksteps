@@ -3,7 +3,8 @@ import {
   getStatusIndicatorData,
   IPipelineItem,
   UserResponeItemsLocal,
-  UserResponeItemsParent
+  UserResponeItemsParent,
+  unMergedCleanResponsesFromParent
 } from "./UserResponses";
 
 import { Card } from "azure-devops-ui/Card";
@@ -58,6 +59,7 @@ interface MyUserStates {
   isRenderReady: boolean;
   CBDoesNotApply: boolean;
   wikiUrl: string;
+  FirstTimeFormOpen: boolean;
 }
 interface MyAdminStates {
   StepRecordsItemProvider: ArrayItemProvider<ITaskItem>;
@@ -84,6 +86,7 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
       isRenderReady: false,
       CBDoesNotApply: false,
       wikiUrl: "",
+      FirstTimeFormOpen: false
     };
   }
 
@@ -91,7 +94,7 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
 
   public componentDidMount() {
     SDK.init().then(() => {
-      this.determineIfJSONReady().then(() => {
+      // this.determineIfJSONReady().then(() => {
       this.fetchAllJSONData().then(() => {
       this.getWiki();
       this.determineIfNotApply();
@@ -99,11 +102,11 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
       this.isRenderReady();
       })
     })
-  })
+  // })
 }
   private activityNotApply = new ObservableValue<boolean>(false);
   //We need this placeholder in case there is no response schema due to being a new item. We will populate this later.
-  private responseSchemaPlaceholder = "";
+  // private responseSchemaPlaceholder = "";
 
   public isRenderReady(){
     this.setState({
@@ -280,15 +283,24 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
       // StoryRecordsArray: storiesplaceholder
     });
     //alert(pipelineItems[e.index].step);
+    let localResults = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses")).toString();
+    let responsesToUse = null
+    if (this.state.FirstTimeFormOpen){
+      responsesToUse = (await UserResponeItemsParent)
+      console.log("Using Parent: " + responsesToUse)
+    } else {
+      responsesToUse = (await UserResponeItemsLocal)
+      console.log("Using Local: " + responsesToUse)
+    }
     //If it is the first step selected and not complete, mark complete
-    let responses = (await UserResponeItemsLocal)
-    this.setMarks(e, responses);
+    //let responses = (await UserResponeItemsLocal)
+    this.setMarks(e, responsesToUse);
     //this.determineIfAwaitExternalProcess(e, responses);
-    this.setRemainingADOFields(responses)
+    this.setRemainingADOFields(responsesToUse)
     // console.log(UserResponeItems.length);
     let stepsplaceholder = new Array<IPipelineItem<{}>>();
     let limitedArray = new Array();
-    for (let entry of responses) {
+    for (let entry of responsesToUse) {
       // let AreaPath = new String(entry.fields["System.AreaPath"])
       // let cleanedAreaPath = AreaPath.split("\\")[1]
       stepsplaceholder.push({
@@ -306,13 +318,13 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
       // let completed = stepsplaceholder.filter((a) => a.status === "success")
       // .length;
       // console.log("Total: " + total + "Completed: " + completed);
-      let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
-      this.setState({
-        StepRecordsItemProvider: arrayItemProvider
-        // StoryRecordsArray: storiesplaceholder
-      });
       // alert(e.index);
     }
+    let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
+    this.setState({
+      StepRecordsItemProvider: arrayItemProvider
+      // StoryRecordsArray: storiesplaceholder
+    });
     let stringifiedJSON = JSON.stringify(limitedArray);
     workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": stringifiedJSON});
   }
@@ -380,7 +392,7 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
       return
       }
 
-      if(e.data.type === "external"){
+      if(e.data.type === "external" && responses[e.index - 1].status === "success"){
         responses[e.index].status = "success";
         this.prepStates(e, responses)
       if(responses[e.index + 1].type === "external"){
@@ -441,13 +453,19 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
   }
   public async determinePercentComplete(){
     const responses = (await UserResponeItemsLocal);
-    let total = responses.length;
-    let completed = responses.filter((a) => a.status === "success").length;
-    let percentComplete = completed / total;
-    this.setState({
-      percentComplete: percentComplete
-    });
-  }
+    if (responses.length == 0){
+      this.setState({
+        percentComplete: 0
+      });
+    } else {
+        let total = responses.length;
+        let completed = responses.filter((a) => a.status === "success").length;
+        let percentComplete = completed / total;
+        this.setState({
+          percentComplete: percentComplete
+        });
+      }
+    }
   public prepStates(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
         //Prep states
         let total = responses.length;
@@ -533,8 +551,11 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
 }
 
   public async fetchAllJSONData() {
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService)
+      let localResults = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses")).toString();
      let stepsplaceholder = new Array<IPipelineItem<{}>>();
-    if(this.responseSchemaPlaceholder.length == 0) {
+    if(localResults.length == 0) {
       //Use the parent work item 
       const responses = (await UserResponeItemsParent);
       for (let entry of responses) {
@@ -546,9 +567,13 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
         });
         let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
         this.setState({
-          StepRecordsItemProvider: arrayItemProvider
+          StepRecordsItemProvider: arrayItemProvider,
+          FirstTimeFormOpen: true
         });
       };
+    let responsesFromParent = await unMergedCleanResponsesFromParent
+    workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": responsesFromParent});
+    workItemFormService.save();
     }else {
       //Use the current work item
       const responses = (await UserResponeItemsLocal);
@@ -569,31 +594,31 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
   }
   
 
-  public async determineIfJSONReady(){
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      WorkItemTrackingServiceIds.WorkItemFormService)
-      const client = getClient(WorkItemTrackingRestClient);
-      let relations = await workItemFormService.getWorkItemRelations();
-      for (let item of relations){
-        // console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
-        if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
-          //Get the id from end of string
-          var matches : number;
-          matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
-          console.log(matches);
-          client.getWorkItemTypeFieldsWithReferences
-          let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
-          let schemaString = (await workitem).fields["Custom.MSQuickStepResponsesSchema"]
-          const cleanedResponses = schemaString.replace(/(<([^>]+)>)/ig, ""); 
-          //second clean for reinsert of quotes
-          const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"');
-          this.responseSchemaPlaceholder = cleanedResponses2;
-          console.log(cleanedResponses2)
-          // workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": cleanedResponses2});
-          // workItemFormService.save();
-    }
-  }
-}
+//   public async determineIfJSONReady(){
+//     const workItemFormService = await SDK.getService<IWorkItemFormService>(
+//       WorkItemTrackingServiceIds.WorkItemFormService)
+//       const client = getClient(WorkItemTrackingRestClient);
+//       let relations = await workItemFormService.getWorkItemRelations();
+//       for (let item of relations){
+//         // console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+//         if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+//           //Get the id from end of string
+//           var matches : number;
+//           matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+//           console.log(matches);
+//           client.getWorkItemTypeFieldsWithReferences
+//           let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
+//           let schemaString = (await workitem).fields["Custom.MSQuickStepResponsesSchema"]
+//           const cleanedResponses = schemaString.replace(/(<([^>]+)>)/ig, ""); 
+//           //second clean for reinsert of quotes
+//           const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"');
+//           this.responseSchemaPlaceholder = cleanedResponses2;
+//           console.log(cleanedResponses2)
+//           // workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": cleanedResponses2});
+//           // workItemFormService.save();
+//     }
+//   }
+// }
   private columns: ITableColumn<IPipelineItem> []= [
     {
       id: "title",
