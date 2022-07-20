@@ -9,6 +9,8 @@ import {
   Statuses,
   StatusSize
 } from "azure-devops-ui/Status";
+import { getClient } from "azure-devops-extension-api";
+import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking/WorkItemTrackingClient";
 import {
   ColumnMore,
   ColumnSelect,
@@ -23,6 +25,7 @@ import {
     IWorkItemFormService,
     WorkItemTrackingServiceIds,
   } from "azure-devops-extension-api/WorkItemTracking";
+  import { WorkItemExpand } from "azure-devops-node-api/interfaces/WorkItemTrackingInterfaces";
   import { IListBoxItem} from "azure-devops-ui/ListBox";
   import * as SDK from "azure-devops-extension-sdk";
 
@@ -36,7 +39,6 @@ export const renderStatus = (className?: string) => {
     />
   );
 };
-
 enum PipelineStatus {
   running = "running",
   succeeded = "succeeded",
@@ -45,41 +47,21 @@ enum PipelineStatus {
   queued = "queued",
   waiting = "waiting"
 }
-const UserResponses = [
-  {
-    step: 1,
-    status: "success"
-  },
-  {
-    step: 2,
-    status: "queued"
-  },
-  {
-    step: 3,
-    status: "queued"
-  },
-  {
-    step: 4,
-    status: "queued"
-  },
-  {
-    step: 5,
-    status: "queued"
-  },
-  {
-    step: 6,
-    status: "queued"
-  }
-];
 
-let results = GetAllMyResponses()
-let mergedSchemaAndResults = MergeSchemaAndResults(results)
+let localResults = GetAllMyResponsesLocal()
+let mergedSchemaAndResultsLocal = MergeSchemaAndResults(localResults)
+let parentResults = GetAllMyResponsesParent()
+let mergedSchemaAndResultsParent = MergeSchemaAndResults(parentResults)
   
-async function GetAllMyResponses() {
-  let response = await ParseResponses()
+async function GetAllMyResponsesLocal() {
+  let response = await RetrieveResponsesLocal()
   return response
 }
-async function RetrieveResponses(){
+async function GetAllMyResponsesParent() {
+  let response = await RetrieveResponsesParent()
+  return response
+}
+async function RetrieveResponsesLocal(){
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService
       )
@@ -90,17 +72,44 @@ async function RetrieveResponses(){
         //console.log("RESPONSE 2 :  " + responses2)
         //let cleanedResponse = responses.replace( /(<([^>]+)>)/ig, '');
         return responses
-    }
-async function ParseResponses(){
-  const data = await RetrieveResponses()
-  // console.log("RESPONSE 3 :   " + data)
-  return data
 }
+async function RetrieveResponsesParent(){
+  const workItemFormService = await SDK.getService<IWorkItemFormService>(
+    WorkItemTrackingServiceIds.WorkItemFormService)
+  const client = getClient(WorkItemTrackingRestClient);
+  let relations = await workItemFormService.getWorkItemRelations();
+  for (let item of relations){
+    // console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+    if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+      //Get the id from end of string
+      var matches : number;
+      matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+      console.log(matches);
+      client.getWorkItemTypeFieldsWithReferences
+      let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
+      let schemaString = (await workitem).fields["Custom.MSQuickStepResponsesSchema"]
+      const cleanedResponses = schemaString.replace(/(<([^>]+)>)/ig, ""); 
+      //second clean for reinsert of quotes
+      const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"');
+      // this.responseSchemaPlaceholder = cleanedResponses2;
+      // workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": cleanedResponses2});
+      // workItemFormService.save();
+      return cleanedResponses2
+     }
+    }
+}
+// async function ParseResponses(){
+//   const data = await RetrieveResponses()
+//   // console.log("RESPONSE 3 :   " + data)
+//   return data
+// }
 
 async function MergeSchemaAndResults(results: Promise<string>){
     // console.log("RESPONSE 4 :   " + results)
     let stepsplaceholder = new Array<IPipelineItem<{}>>();
     const responses = (await results)
+    if(responses.length != 0) {
+    console.log("Here is the response: " +responses)
     //first clean for html tag removal
     const cleanedResponses = responses.replace(/(<([^>]+)>)/ig, ""); 
     //second clean for reinsert of quotes
@@ -119,7 +128,10 @@ async function MergeSchemaAndResults(results: Promise<string>){
           type: itemToMatch?.type || "", //We will set this from schema
         });
       }
-return stepsplaceholder
+  return stepsplaceholder
+    } else {
+      return stepsplaceholder
+    }
 }
 
 async function returnMatchedSchemaRecord(item: any){
@@ -133,7 +145,8 @@ async function returnMatchedSchemaRecord(item: any){
 
 }
 
-export const UserResponeItems = mergedSchemaAndResults
+export const UserResponeItemsLocal = mergedSchemaAndResultsLocal
+export const UserResponeItemsParent = mergedSchemaAndResultsParent
 
 // export const UserResponeItems = getUserStepStatus();
 

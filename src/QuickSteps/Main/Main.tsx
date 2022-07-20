@@ -2,7 +2,8 @@ import * as React from "react";
 import {
   getStatusIndicatorData,
   IPipelineItem,
-  UserResponeItems
+  UserResponeItemsLocal,
+  UserResponeItemsParent
 } from "./UserResponses";
 
 import { Card } from "azure-devops-ui/Card";
@@ -101,6 +102,8 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
   })
 }
   private activityNotApply = new ObservableValue<boolean>(false);
+  //We need this placeholder in case there is no response schema due to being a new item. We will populate this later.
+  private responseSchemaPlaceholder = "";
 
   public isRenderReady(){
     this.setState({
@@ -243,7 +246,7 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService
     )
-    let responses = (await UserResponeItems)
+    let responses = (await UserResponeItemsLocal)
     let currentState = (await workItemFormService.getFieldValue("System.State")).toString();
     console.log(currentState)
     this.activityNotApply.value = checked
@@ -278,7 +281,7 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
     });
     //alert(pipelineItems[e.index].step);
     //If it is the first step selected and not complete, mark complete
-    let responses = (await UserResponeItems)
+    let responses = (await UserResponeItemsLocal)
     this.setMarks(e, responses);
     //this.determineIfAwaitExternalProcess(e, responses);
     this.setRemainingADOFields(responses)
@@ -437,7 +440,7 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
     // }
   }
   public async determinePercentComplete(){
-    const responses = (await UserResponeItems);
+    const responses = (await UserResponeItemsLocal);
     let total = responses.length;
     let completed = responses.filter((a) => a.status === "success").length;
     let percentComplete = completed / total;
@@ -531,45 +534,44 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
 
   public async fetchAllJSONData() {
      let stepsplaceholder = new Array<IPipelineItem<{}>>();
-     //First check if schema is null before building steps. If null, we need to pull it down from the parent
-    //  let schemaIsDefinedthis.getStepsSchema
-    //  if (userResponses.length == 0) {
-    //   console.log("Entering no schema")
-    //   //no schema present. Get it.
-    //   this.getStepsSchema();
-    //  }
-    //  let schemaisReady = (await this.getStepsSchema)
-    //  if (schemaisReady) {
-    //   console.log("Entering schema ready")
-    //   console.log("Schema Ready Value:  "schemaisReady)
-    const responses = (await UserResponeItems);
-    // const schema = (await ADOSchema)
-    // var parseRespones = JSON.parse(responses)
-    for (let entry of responses) {
-      // let AreaPath = new String(entry.fields["System.AreaPath"])
-      // let cleanedAreaPath = AreaPath.split("\\")[1]
-      stepsplaceholder.push({
-        step: entry.step,
-        title: entry.title,
-        status: entry.status,
-        type: entry.type
-      });
-      // storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
-      let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
-      this.setState({
-        StepRecordsItemProvider: arrayItemProvider
-        // StoryRecordsArray: storiesplaceholder
-      });
+    if(this.responseSchemaPlaceholder.length == 0) {
+      //Use the parent work item 
+      const responses = (await UserResponeItemsParent);
+      for (let entry of responses) {
+        stepsplaceholder.push({
+          step: entry.step,
+          title: entry.title,
+          status: entry.status,
+          type: entry.type
+        });
+        let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
+        this.setState({
+          StepRecordsItemProvider: arrayItemProvider
+        });
+      };
+    }else {
+      //Use the current work item
+      const responses = (await UserResponeItemsLocal);
+      for (let entry of responses) {
+        stepsplaceholder.push({
+          step: entry.step,
+          title: entry.title,
+          status: entry.status,
+          type: entry.type
+        });
+        let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
+        this.setState({
+          StepRecordsItemProvider: arrayItemProvider
+        });
+      }
+
     }
   }
-    // console.log("123");
   
 
   public async determineIfJSONReady(){
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService)
-      let userResponses = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses")).toString();
-      if(userResponses.length == 0) {
       const client = getClient(WorkItemTrackingRestClient);
       let relations = await workItemFormService.getWorkItemRelations();
       for (let item of relations){
@@ -584,16 +586,13 @@ export class QuickStepsUser extends React.Component<{}, MyUserStates> {
           let schemaString = (await workitem).fields["Custom.MSQuickStepResponsesSchema"]
           const cleanedResponses = schemaString.replace(/(<([^>]+)>)/ig, ""); 
           //second clean for reinsert of quotes
-          const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"'); 
-          workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": cleanedResponses2});
-          workItemFormService.save();
-       }
+          const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"');
+          this.responseSchemaPlaceholder = cleanedResponses2;
+          console.log(cleanedResponses2)
+          // workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": cleanedResponses2});
+          // workItemFormService.save();
     }
-console.log("Added JSON from parent")
-  } else {
-    console.log("JSON laready present. Skipping")
   }
-
 }
   private columns: ITableColumn<IPipelineItem> []= [
     {

@@ -19,38 +19,6 @@ interface SchemaInterface {
  }
 
 export const allSchemaItems: SchemaInterface[] = []
-// export const schemaItems = [
-//   {
-//     step: "1",
-//     title: "Complete SAAR-N & Digitally Sign",
-//     type: "internal"
-//   },
-//   {
-//     step: "2",
-//     title: "Email SAAR-N",
-//     type: "internal"
-//   },
-//   {
-//     step: "3",
-//     title: "Await Email SAAR-N Completion",
-//     type: "external"
-//   },
-//   {
-//     step: "4",
-//     title: "Validate Login to Account",
-//     type: "internal"
-//   },
-//   {
-//     step: "5",
-//     title: "Validate Roles on Account",
-//     type: "internal"
-//   },
-//   {
-//     step: "6",
-//     title: "Mention CSAM in Comments upon completion",
-//     type: "internal"
-//   }
-// ];
 
 let isSchemaReady = GetSchema()
   
@@ -62,8 +30,8 @@ async function RetrieveResponses(){
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService
       );
-      const organization = await SDK.getHost()
-      const project = await Project
+      // const organization = await SDK.getHost()
+      // const project = await Project
       const client = getClient(WorkItemTrackingRestClient);
       let relations = await workItemFormService.getWorkItemRelations();
       for (let item of relations){
@@ -87,34 +55,9 @@ async function Schema(){
   const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"'); 
   let parsedData = JSON.parse(cleanedResponses2)
   for(let item of parsedData.items){
-    console.log(item)
+    //console.log(item)
     allSchemaItems.push({step: item.step, title: item.title, type: item.type})
   }
   return true
-  // console.log("RESPONSE 3 :   " + data)
 }
-
-// async function getSchema(){
-//   const workItemFormService = await SDK.getService<IWorkItemFormService>(
-//     WorkItemTrackingServiceIds.WorkItemFormService
-//   );
-//   const organization = await SDK.getHost()
-//   const project = await Project
-//   const client = getClient(WorkItemTrackingRestClient);
-//   let relations = await workItemFormService.getWorkItemRelations();
-//   for (let item of relations){
-//     console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
-//     if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
-//       //Get the id from end of string
-//       var matches : number;
-//       matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
-//       console.log(matches);
-//       client.getWorkItemTypeFieldsWithReferences
-//       let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
-//       let schemaString = (await workitem).fields["Custom.MSQuickStepSchema"]
-//       return schemaString
-//   }
-// }
-// }
-
  export const mySchemaItemsStatus = isSchemaReady;
