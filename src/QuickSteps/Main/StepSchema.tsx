@@ -54,7 +54,7 @@ async function Schema(){
   //second clean for reinsert of quotes
   const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"'); 
   let parsedData = JSON.parse(cleanedResponses2)
-  for(let item of parsedData.items){
+  for(let item of parsedData){
     //console.log(item)
     allSchemaItems.push({step: item.step, title: item.title, type: item.type})
   }
