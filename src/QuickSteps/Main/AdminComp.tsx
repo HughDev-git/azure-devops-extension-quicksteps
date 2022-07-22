@@ -14,8 +14,10 @@ import {ITaskItem} from "./StepSchema"
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { ObservableValue, Observable } from "azure-devops-ui/Core/Observable";
+import { Observer } from "azure-devops-ui/Observer";
 import "./quicksteps.scss";
 import { Button } from "azure-devops-ui/Button";
+import { Dialog } from "azure-devops-ui/Dialog";
 import { ButtonGroup } from "azure-devops-ui/ButtonGroup";
 import { Panel } from "azure-devops-ui/Panel";
 import { FormItem } from "azure-devops-ui/FormItem";
@@ -39,7 +41,7 @@ interface MyAdminStates {
     moveUpStepDisabled: boolean;
     moveDownStepDisabled: boolean;
     nextDisabled: boolean;
-    panelExpanded: boolean; 
+    panelExpanded: boolean;
   }
 
   export class QuickStepsAdmin extends React.Component<{}, MyAdminStates>{
@@ -51,10 +53,11 @@ interface MyAdminStates {
         moveUpStepDisabled: true,
         moveDownStepDisabled: true,
         panelExpanded: false,
-        nextDisabled: true
+        nextDisabled: true,
         // selectedItem: null
       };
     }
+    private isAlmostDoneDialogOpen = new ObservableValue<boolean>(false);
     private selection = new ListSelection(true);
     private ddSelection = new DropdownSelection();
     private newStepTitle = new ObservableValue<string | undefined>("");
@@ -124,7 +127,7 @@ interface MyAdminStates {
             //   className="btnfloat"
               primary={true}
               disabled={this.state.nextDisabled}
-              onClick={() => alert("Icon Button clicked!")}
+              onClick={this.onNextButtonClick.bind(this)}
             />
           </ButtonGroup>
           {this.state.panelExpanded && (
@@ -146,6 +149,31 @@ interface MyAdminStates {
                 }
               ]}
             >
+                <Observer isDialogOpen={this.isAlmostDoneDialogOpen}>
+                    {(props: { isDialogOpen: boolean }) => {
+                        return props.isDialogOpen ? (
+                            <Dialog
+                                titleProps={{ text: "Confirm" }}
+                                
+                                footerButtonProps={[
+                                    {
+                                        text: "Cancel",
+                                        onClick: this.onDismissAlmostDoneDialog
+                                    },
+                                    {
+                                        text: "Save Changes",
+                                        onClick: this.onDismissAlmostDoneDialog,
+                                        primary: true
+                                    }
+                                ]}
+                                onDismiss={this.onDismissAlmostDoneDialog}
+                            >
+                                You have modified this work item. You can save your changes, discard
+                                your changes, or cancel to continue editing.
+                            </Dialog>
+                        ) : null;
+                    }}
+                </Observer>
               <div style={{ height: "500px" }}>
                 <div>
                   <FormItem
@@ -245,6 +273,14 @@ interface MyAdminStates {
       );
     }
   
+    public onDismissAlmostDoneDialog(){
+      this.isAlmostDoneDialogOpen.value = false
+    }
+
+    public onNextButtonClick(){
+      this.isAlmostDoneDialogOpen.value = true
+    }
+
     private onNewTitleChange = (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
       newValue: string
@@ -290,17 +326,17 @@ interface MyAdminStates {
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService
       )
-      let responseSchemaDraft = new Array()
-      let stepsSchemaDraft = new Array<IResponseItem<{}>>();
+      let responseSchemaDraft = new Array<IResponseItem<{}>>();
+      let stepsSchemaDraft = new Array()
       for(let entry of allSteps){
         responseSchemaDraft.push({
           step: entry.step,
-          title: entry.name,
-          type: entry.type
+          status: "queued"
         });
         stepsSchemaDraft.push({
           step: entry.step,
-          status: "queued"
+          type: entry.type,
+          title: entry.name
         });
       }
       let stringifiedresponseSchemaDraft = JSON.stringify(responseSchemaDraft);
@@ -331,19 +367,23 @@ interface MyAdminStates {
     // }
   
     public async determineNextBtnState(){
-      const workItemFormService = await SDK.getService<IWorkItemFormService>(
-        WorkItemTrackingServiceIds.WorkItemFormService
-      )
-      let string1Dirty = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchemaDraft")).toString();
-      let string2Dirty = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchema")).toString();
-      let string1Clean = this.cleanHTMLField(string1Dirty);
-      let string2Clean = this.cleanHTMLField(string2Dirty);
-      if(string1Clean === string2Clean){
+      // const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      //   WorkItemTrackingServiceIds.WorkItemFormService
+      // )
+      // let string1Dirty = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchemaDraft")).toString();
+      // let string2Dirty = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchema")).toString();
+      // let string1Clean = this.cleanHTMLField(string1Dirty);
+      // let string2Clean = this.cleanHTMLField(string2Dirty);
+      // console.log("String 1:   "+ string1Clean);
+      // console.log("String 2:   "+ string2Clean);
+      if(allSteps.length == 0){
+        console.log("The strings match")
         this.setState({
           nextDisabled: true
           // StoryRecordsArray: storiesplaceholder
         });
       } else {
+        console.log("The strings DO NOT match")
         this.setState({
           nextDisabled: false
           // StoryRecordsArray: storiesplaceholder
