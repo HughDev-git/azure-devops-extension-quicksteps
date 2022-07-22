@@ -46,9 +46,9 @@ export class Main extends React.Component<{}, MyStates>{
       if (this.state.isRenderReady && this.state.View === "USER"){
        return (<QuickStepsUser/>)
     } else if (this.state.isRenderReady && this.state.View === "ADMIN"){
-      return (<QuickStepsAdmin/>)}
+       return (<QuickStepsAdmin/>)}
       else {
-      return (<div className="flex-row"></div>)
+       return (<div className="flex-row"></div>)
     }
   }
 }

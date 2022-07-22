@@ -29,7 +29,7 @@ import {
 } from "azure-devops-extension-api/WorkItemTracking";
 import { Link } from "azure-devops-ui/Link";
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
-import { Icon } from "azure-devops-ui/Icon";
+import { Icon } from '@fluentui/react/lib/Icon';
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { Checkbox } from "azure-devops-ui/Checkbox";
 import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking/WorkItemTrackingClient";
@@ -54,6 +54,7 @@ interface MyUserStates {
     CBDoesNotApply: boolean;
     wikiUrl: string;
     FirstTimeFormOpen: boolean;
+    View: string
   }
 
   export class QuickStepsUser extends React.Component<{}, MyUserStates> {
@@ -70,7 +71,8 @@ interface MyUserStates {
         isRenderReady: false,
         CBDoesNotApply: false,
         wikiUrl: "",
-        FirstTimeFormOpen: false
+        FirstTimeFormOpen: false,
+        View: ""
       };
     }
   
@@ -78,15 +80,28 @@ interface MyUserStates {
     public componentDidMount() {
       SDK.init().then(() => {
         // this.determineIfJSONReady().then(() => {
+        this.fetchWITInput()
+        if (this.state.View === "USER") {
         this.fetchAllJSONData().then(() => {
         this.getWiki();
         this.determineIfNotApply();
         this.determinePercentComplete();
         this.isRenderReady();
+        
         })
+      } else {
+        console.log("This is the ADMIN view")
+      }
       })
     // })
   }
+  public fetchWITInput(){
+    let view = SDK.getConfiguration().witInputs["View Type"]
+    this.setState({
+      View: view
+      // StoryRecordsArray: storiesplaceholder
+    });
+}
     private workItemType = null
     private activityNotApply = new ObservableValue<boolean>(false);
     //We need this placeholder in case there is no response schema due to being a new item. We will populate this later.

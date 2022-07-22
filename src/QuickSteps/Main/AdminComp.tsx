@@ -42,6 +42,9 @@ interface MyAdminStates {
     moveDownStepDisabled: boolean;
     nextDisabled: boolean;
     panelExpanded: boolean;
+    numberOfChildrecords: number;
+    almostDoneDDID: string;
+    View: string
   }
 
   export class QuickStepsAdmin extends React.Component<{}, MyAdminStates>{
@@ -54,10 +57,18 @@ interface MyAdminStates {
         moveDownStepDisabled: true,
         panelExpanded: false,
         nextDisabled: true,
+        numberOfChildrecords: 0,
+        almostDoneDDID: "",
+        View: ""
+        
         // selectedItem: null
       };
+      this.almostDoneDDselection.select(0)
     }
-    private isAlmostDoneDialogOpen = new ObservableValue<boolean>(false);
+    private isAlmostDoneChildItemsExistDialogOpen = new ObservableValue<boolean>(false);
+    private isAlmostDoneChildItemsNotExistDialogOpen = new ObservableValue<boolean>(false);
+    private almostDoneDDselection = new DropdownSelection();
+    // private almostDoneDDSelectedItemID = new ObservableValue<string>("");
     private selection = new ListSelection(true);
     private ddSelection = new DropdownSelection();
     private newStepTitle = new ObservableValue<string | undefined>("");
@@ -74,10 +85,24 @@ interface MyAdminStates {
     //private selectedItem = new ObservableValue<IListRow<ITaskItem>>(null);
     public componentDidMount() {
       SDK.init().then(() => {
+      this.fetchWITInput()
+      if (this.state.View === "ADMIN") {
       this.fetchAllJSONData();
+      this.determineIfChildrenExist();
+      } else {
+        console.log("This is the USER view")
+      }
       });
       // });
     }
+
+    public fetchWITInput(){
+      let view = SDK.getConfiguration().witInputs["View Type"]
+      this.setState({
+        View: view
+        // StoryRecordsArray: storiesplaceholder
+      });
+}
   
     public render(): JSX.Element {
       return (
@@ -149,31 +174,6 @@ interface MyAdminStates {
                 }
               ]}
             >
-                <Observer isDialogOpen={this.isAlmostDoneDialogOpen}>
-                    {(props: { isDialogOpen: boolean }) => {
-                        return props.isDialogOpen ? (
-                            <Dialog
-                                titleProps={{ text: "Confirm" }}
-                                
-                                footerButtonProps={[
-                                    {
-                                        text: "Cancel",
-                                        onClick: this.onDismissAlmostDoneDialog
-                                    },
-                                    {
-                                        text: "Save Changes",
-                                        onClick: this.onDismissAlmostDoneDialog,
-                                        primary: true
-                                    }
-                                ]}
-                                onDismiss={this.onDismissAlmostDoneDialog}
-                            >
-                                You have modified this work item. You can save your changes, discard
-                                your changes, or cancel to continue editing.
-                            </Dialog>
-                        ) : null;
-                    }}
-                </Observer>
               <div style={{ height: "500px" }}>
                 <div>
                   <FormItem
@@ -269,17 +269,127 @@ interface MyAdminStates {
               <div style={{ marginTop: "3em" }}></div>
             </Panel>
           )}
+                  <Observer isDialogOpen={this.isAlmostDoneChildItemsExistDialogOpen}>
+                    {(props: { isDialogOpen: boolean }) => {
+                        return props.isDialogOpen ? (
+                            <Dialog
+                                titleProps={{ text: "Almost Done..." }}
+                                
+                                footerButtonProps={[
+                                    {
+                                        text: "Cancel",
+                                        onClick: this.onDismissAlmostDoneChildItemsExistDialog.bind(this)
+                                    },
+                                    {
+                                        text: "PUBLISH",
+                                        onClick: this.onPublishClick.bind(this),
+                                        primary: true
+                                    }
+                                ]}
+                                onDismiss={this.onDismissAlmostDoneChildItemsExistDialog}
+                            >
+                              It looks like there are {this.state.numberOfChildrecords} onboarding activitie(s) already assigned to this this onboarding story. How do you want to handle onboarding activities that have already been assigned?
+                              <Dropdown
+                                  //ariaLabel="Default selection"
+                                  //className="example-dropdown"
+                                  className="resetOptionsDD"
+                                  placeholder="Select an Option"
+                                  items={[
+                                    { id: "1", text: "Do Nothing" },
+                                    { id: "2", text: "Reset Everyone" },
+                                    { id: "3", text: "Reset In Progress Users" }
+                                ]}
+                                  selection={this.almostDoneDDselection}
+                                  onSelect={this.onAlmostDoneDDSelect.bind(this)}
+                              />
+                                  {this.state.almostDoneDDID === "1" ?
+                                  <div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended if you didn't reorder steps and only made slight changes</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Reordered steps not previously completed might be marked completed now</div>
+                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />If a critical step detail has changed, the user might be unaware</div>
+                                  </div>
+                                  :this.state.almostDoneDDID === "2" ?
+                                  <div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended when you need everyone to reasses their onboarding activity</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Users who completed the activity will need to revalidate their steps</div>
+                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Users who completed the onboarding activity will need to revalidate their steps</div>
+                                  </div>
+                                  :this.state.almostDoneDDID === "3" ?
+                                  <div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended when you don't need users already done to redo efforts</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Users already done will not need to redo their activity</div>
+                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />User almost done with their steps will still need to start over</div>
+                                  </div>
+                                  : ""}
+                            </Dialog>
+                        ) : null;
+                    }}
+                </Observer>
+                <Observer isDialogOpen={this.isAlmostDoneChildItemsNotExistDialogOpen}>
+                    {(props: { isDialogOpen: boolean }) => {
+                        return props.isDialogOpen ? (
+                            <Dialog
+                                titleProps={{ text: "You are good to go!" }}
+                                
+                                footerButtonProps={[
+                                    {
+                                        text: "Cancel",
+                                        onClick: this.onDismissAlmostDoneChildItemsNotExistDialog.bind(this)
+                                    },
+                                    {
+                                        text: "PUBLISH",
+                                        onClick: this.onPublishClick.bind(this),
+                                        primary: true
+                                    }
+                                ]}
+                                onDismiss={this.onDismissAlmostDoneChildItemsNotExistDialog.bind(this)}
+                            >
+                             <span>Go ahead and click Publish to make these steps available to all activities linked to this story.</span>
+                            </Dialog>
+                        ) : null;
+                    }}
+                </Observer>
         </div>
       );
     }
+
+    public async onPublishClick(){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      )
+       let responsesSchema = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponsesSchemaDraft")).toString();
+       let stepsSchema = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchemaDraft")).toString();
+      workItemFormService.setFieldValues({"Custom.MSQuickStepSchema": stepsSchema});
+      workItemFormService.setFieldValues({"Custom.MSQuickStepResponsesSchema": responsesSchema});
+      workItemFormService.save();
+    }
   
-    public onDismissAlmostDoneDialog(){
-      this.isAlmostDoneDialogOpen.value = false
+    public onDismissAlmostDoneChildItemsExistDialog(){
+      this.isAlmostDoneChildItemsExistDialogOpen.value = false
+    }
+    public onDismissAlmostDoneChildItemsNotExistDialog(){
+      this.isAlmostDoneChildItemsNotExistDialogOpen.value = false
+    }
+
+    private onAlmostDoneDDSelect = (event: React.SyntheticEvent<HTMLElement>, item: IListBoxItem<{}>) => {
+      this.setState({
+        almostDoneDDID: item.id
+        // StoryRecordsArray: storiesplaceholder
+      });
     }
 
     public onNextButtonClick(){
-      this.isAlmostDoneDialogOpen.value = true
+      //Determine which dialog to open
+      if(this.state.numberOfChildrecords > 0) {
+      this.isAlmostDoneChildItemsExistDialogOpen.value = true
+    } else {
+      this.isAlmostDoneChildItemsNotExistDialogOpen.value = true
     }
+    this.setState({
+      almostDoneDDID: "1"
+      // StoryRecordsArray: storiesplaceholder
+    });
+  }
 
     private onNewTitleChange = (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -297,6 +407,7 @@ interface MyAdminStates {
   
     public onClickRemove() {
       allSteps.splice(this.selection.value[0].beginIndex, 1);
+      this.updateSchemaDraft();
       let arrayItemProvider = new ArrayItemProvider(allSteps);
       this.setState({
         StepRecordsItemProvider: arrayItemProvider
@@ -321,6 +432,26 @@ interface MyAdminStates {
       //this.newStepType.value = "";
       
     }
+
+    public async determineIfChildrenExist(){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      )
+      let count = 0
+      let relations = await workItemFormService.getWorkItemRelations();
+      for (let item of relations){
+         console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+        if(item.rel == "System.LinkTypes.Hierarchy-Forward"){
+          count++
+         }
+        }
+        this.setState({
+          numberOfChildrecords: count
+          // StoryRecordsArray: storiesplaceholder
+        });
+        console.log("There are " + count + " child items for this record")
+    }
+
 
     public async updateSchemaDraft(){
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
@@ -450,6 +581,7 @@ interface MyAdminStates {
         allSteps[this.selection.value[0].beginIndex + 1],
         allSteps[this.selection.value[0].beginIndex]
       ];
+      this.updateSchemaDraft();
       // this.setState({
       //   selectedItem: this.state.selectedItem
       //   // StoryRecordsArray: storiesplaceholder
@@ -485,6 +617,7 @@ interface MyAdminStates {
         allSteps[this.selection.value[0].beginIndex - 1],
         allSteps[this.selection.value[0].beginIndex]
       ];
+      this.updateSchemaDraft();
       this.selection.select(this.selection.value[0].endIndex);
       for (let entry of allSteps) {
         console.log(entry);
