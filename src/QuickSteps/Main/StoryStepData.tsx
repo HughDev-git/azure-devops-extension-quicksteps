@@ -18,7 +18,6 @@ export interface ITaskItem {
   }
   
   
-  export const allSteps: ITaskItem[] = [];
 
   interface SchemaInterface {
     step: string,
@@ -26,7 +25,8 @@ export interface ITaskItem {
     type: string
    }
 
-   let isSchemaReady = GetSchema()
+let isSchemaReady = GetSchema()
+let myscSchemaItems = schemaItems()
   
 async function GetSchema() {
   let response = await Schema()
@@ -39,7 +39,13 @@ async function RetrieveResponses(){
           return currentSteps
 }
 
+async function schemaItems(){
+let results = await Schema()
+return results
+}
+
 async function Schema(){
+  let placeholder = new Array<ITaskItem>();
   const data = await RetrieveResponses()
   const cleanedResponses = data.replace(/(<([^>]+)>)/ig, ""); 
   //second clean for reinsert of quotes
@@ -47,9 +53,11 @@ async function Schema(){
   let parsedData = JSON.parse(cleanedResponses2)
   for(let item of parsedData){
     //console.log(item)
-    allSteps.push({step: item.step, name: item.title, type: item.type})
+    // allSteps.push({step: item.step, name: item.title, type: item.type})
+    placeholder.push({step: item.step, name: item.title, type: item.type})
   }
-  return true
+  return placeholder
 }
  export const mySchemaItemsStatus = isSchemaReady;
+ export const allSteps = myscSchemaItems
   

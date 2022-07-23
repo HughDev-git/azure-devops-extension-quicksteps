@@ -44,7 +44,8 @@ interface MyAdminStates {
     panelExpanded: boolean;
     numberOfChildrecords: number;
     almostDoneDDID: string;
-    View: string
+    View: string;
+    isRenderReady: boolean;
   }
 
   export class QuickStepsAdmin extends React.Component<{}, MyAdminStates>{
@@ -59,7 +60,8 @@ interface MyAdminStates {
         nextDisabled: true,
         numberOfChildrecords: 0,
         almostDoneDDID: "",
-        View: ""
+        View: "",
+        isRenderReady: false
         
         // selectedItem: null
       };
@@ -87,8 +89,10 @@ interface MyAdminStates {
       SDK.init().then(() => {
       this.fetchWITInput()
       if (this.state.View === "ADMIN") {
-      this.fetchAllJSONData();
+      this.fetchAllJSONData().then(() => {
       this.determineIfChildrenExist();
+      this.isRenderReady()
+      });
       } else {
         console.log("This is the USER view")
       }
@@ -102,9 +106,11 @@ interface MyAdminStates {
         View: view
         // StoryRecordsArray: storiesplaceholder
       });
+    
 }
   
     public render(): JSX.Element {
+      if (this.state.isRenderReady){
       return (
         <div>
           <Card>
@@ -351,6 +357,17 @@ interface MyAdminStates {
                 </Observer>
         </div>
       );
+                  } else {
+                    return (<div className="flex-row"></div>)
+                  }
+    }
+
+
+    public isRenderReady(){
+      this.setState({
+        isRenderReady: true
+        // StoryRecordsArray: storiesplaceholder
+      });
     }
 
     public async onPublishClick(){
@@ -639,7 +656,7 @@ interface MyAdminStates {
       // this.selection.select(this.state.selectedItem.index - 1);
     }
   
-    public fetchAllJSONData() {
+    public async fetchAllJSONData() {
       let stepsplaceholder = new Array<ITaskItem>();
       for (let entry of allSteps) {
         // let AreaPath = new String(entry.fields["System.AreaPath"])
