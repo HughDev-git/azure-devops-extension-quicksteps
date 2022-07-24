@@ -422,21 +422,23 @@ interface MyAdminStates {
       this.newStepType.value = item.id || "";
     };
   
-    public onClickRemove() {
-      allSteps.splice(this.selection.value[0].beginIndex, 1);
+    public async onClickRemove() {
+      let items = await allSteps
+      items.splice(this.selection.value[0].beginIndex, 1);
       this.updateSchemaDraft();
-      let arrayItemProvider = new ArrayItemProvider(allSteps);
+      let arrayItemProvider = new ArrayItemProvider(items);
       this.setState({
         StepRecordsItemProvider: arrayItemProvider
         // StoryRecordsArray: storiesplaceholder
       });
     }
   
-    public onCreateClick() {
+    public async onCreateClick() {
       this.updateSchemaDraft();
-      let arrayItemProvider = new ArrayItemProvider(allSteps);
-      allSteps.push({
-        step: (allSteps.length + 1).toString(),
+      let items = await allSteps
+      let arrayItemProvider = new ArrayItemProvider(items);
+      items.push({
+        step: (items.length + 1).toString(),
         name: this.newStepTitle.value || "",
         type: this.newStepType.value
       });
@@ -474,9 +476,10 @@ interface MyAdminStates {
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService
       )
+      let items = await allSteps
       let responseSchemaDraft = new Array<IResponseItem<{}>>();
       let stepsSchemaDraft = new Array()
-      for(let entry of allSteps){
+      for(let entry of items){
         responseSchemaDraft.push({
           step: entry.step,
           status: "queued"
@@ -515,16 +518,8 @@ interface MyAdminStates {
     // }
   
     public async determineNextBtnState(){
-      // const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      //   WorkItemTrackingServiceIds.WorkItemFormService
-      // )
-      // let string1Dirty = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchemaDraft")).toString();
-      // let string2Dirty = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchema")).toString();
-      // let string1Clean = this.cleanHTMLField(string1Dirty);
-      // let string2Clean = this.cleanHTMLField(string2Dirty);
-      // console.log("String 1:   "+ string1Clean);
-      // console.log("String 2:   "+ string2Clean);
-      if(allSteps.length == 0){
+      let items = await allSteps
+      if(items.length == 0){
         console.log("The strings match")
         this.setState({
           nextDisabled: true
@@ -574,8 +569,9 @@ interface MyAdminStates {
       }
     }
   
-    public determineMoveDownState() {
-      if (this.selection.value[0].beginIndex + 1 >= allSteps.length) {
+    public async determineMoveDownState() {
+      let items = await allSteps
+      if (this.selection.value[0].beginIndex + 1 >= items.length) {
         this.setState({
           moveDownStepDisabled: true
           // StoryRecordsArray: storiesplaceholder
@@ -590,13 +586,14 @@ interface MyAdminStates {
   
     public async onClickMoveDown() {
       //let newSelected = this.selection.selected.toString()
+      let items = await allSteps
       let stepsplaceholder = new Array<ITaskItem>();
       [
-        allSteps[this.selection.value[0].beginIndex],
-        allSteps[this.selection.value[0].beginIndex + 1]
+        items[this.selection.value[0].beginIndex],
+        items[this.selection.value[0].beginIndex + 1]
       ] = [
-        allSteps[this.selection.value[0].beginIndex + 1],
-        allSteps[this.selection.value[0].beginIndex]
+        items[this.selection.value[0].beginIndex + 1],
+        items[this.selection.value[0].beginIndex]
       ];
       this.updateSchemaDraft();
       // this.setState({
@@ -604,7 +601,7 @@ interface MyAdminStates {
       //   // StoryRecordsArray: storiesplaceholder
       // });
       this.selection.select(this.selection.value[0].endIndex);
-      for (let entry of allSteps) {
+      for (let entry of items) {
         console.log(entry);
         // let AreaPath = new String(entry.fields["System.AreaPath"])
         // let cleanedAreaPath = AreaPath.split("\\")[1]
@@ -626,17 +623,18 @@ interface MyAdminStates {
     }
   
     public async onClickMoveUp() {
+      let items = await allSteps
       let stepsplaceholder = new Array<ITaskItem>();
       [
-        allSteps[this.selection.value[0].beginIndex],
-        allSteps[this.selection.value[0].beginIndex - 1]
+        items[this.selection.value[0].beginIndex],
+        items[this.selection.value[0].beginIndex - 1]
       ] = [
-        allSteps[this.selection.value[0].beginIndex - 1],
-        allSteps[this.selection.value[0].beginIndex]
+        items[this.selection.value[0].beginIndex - 1],
+        items[this.selection.value[0].beginIndex]
       ];
       this.updateSchemaDraft();
       this.selection.select(this.selection.value[0].endIndex);
-      for (let entry of allSteps) {
+      for (let entry of items) {
         console.log(entry);
         // let AreaPath = new String(entry.fields["System.AreaPath"])
         // let cleanedAreaPath = AreaPath.split("\\")[1]
@@ -657,8 +655,9 @@ interface MyAdminStates {
     }
   
     public async fetchAllJSONData() {
+      let items = await allSteps
       let stepsplaceholder = new Array<ITaskItem>();
-      for (let entry of allSteps) {
+      for (let entry of items) {
         // let AreaPath = new String(entry.fields["System.AreaPath"])
         // let cleanedAreaPath = AreaPath.split("\\")[1]
         stepsplaceholder.push({
@@ -671,6 +670,11 @@ interface MyAdminStates {
         StepRecordsItemProvider: arrayItemProvider
         // StoryRecordsArray: storiesplaceholder
       });
+    }
+
+    public async awaitAllItems(){
+      let items = await allSteps
+      return items
     }
   
     private renderRow = (
