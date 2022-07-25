@@ -30,7 +30,10 @@ import {
   IWorkItemFormService,
   WorkItemTrackingServiceIds,
 } from "azure-devops-extension-api/WorkItemTracking";
-import { IPipelineItem } from "./UserResponses";
+import { Toggle } from "azure-devops-ui/Toggle";
+import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking/WorkItemTrackingClient";
+import { getClient } from "azure-devops-extension-api";
+import { Project } from "./CurrentProject";
 
 
 initializeIcons();
@@ -46,6 +49,7 @@ interface MyAdminStates {
     almostDoneDDID: string;
     View: string;
     isRenderReady: boolean;
+    notifyUserofChange: boolean;
   }
 
   export class QuickStepsAdmin extends React.Component<{}, MyAdminStates>{
@@ -61,7 +65,8 @@ interface MyAdminStates {
         numberOfChildrecords: 0,
         almostDoneDDID: "",
         View: "",
-        isRenderReady: false
+        isRenderReady: false,
+        notifyUserofChange: false
         
         // selectedItem: null
       };
@@ -74,6 +79,8 @@ interface MyAdminStates {
     private selection = new ListSelection(true);
     private ddSelection = new DropdownSelection();
     private newStepTitle = new ObservableValue<string | undefined>("");
+    private notifyUsersChangeToggle = new ObservableValue<boolean>(false);
+    private multilineObservable = new ObservableValue<string| undefined>("");
     //private newStepTitleRO = new IReadonlyObservableValue()
     
     private newStepType = new ObservableValue<string>("");
@@ -327,6 +334,33 @@ interface MyAdminStates {
                                   <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />User almost done with their steps will still need to start over</div>
                                   </div>
                                   : ""}
+                                  {/* <div className="notifyUsers">
+                                     <FormItem
+                                        label= "Notify Users?"
+                                    />  
+                                    </div>
+                                    <Toggle
+                                      offText={"No"}
+                                      onText={"Yes"}
+                                      checked={this.notifyUsersChangeToggle}
+                                      onChange={(event: any, value: any) => this.onNotifyUserofChangeToggle(value)}
+                                  />
+                                  {this.state.notifyUserofChange ?
+                                  <div>
+                                  <FormItem
+                                   message="Please be descriptive as to your change. This message will be displayed when users open their activity and can help guide them on the changes made."
+                                    >
+                                  <div className="notifyUsers">    
+                                  <TextField
+                                  ariaLabel="Aria label"
+                                  className="notifyUsers"
+                                  value={this.multilineObservable}
+                                  onChange={(e, newValue) => (this.multilineObservable.value = newValue)}
+                                  multiline
+                                  rows={5}
+                                  width={TextFieldWidth.auto}
+                                  /></div>
+                                  </FormItem></div>: ""} */}
                             </Dialog>
                         ) : null;
                     }}
@@ -363,6 +397,21 @@ interface MyAdminStates {
     }
 
 
+    public onNotifyUserofChangeToggle(value: boolean){
+      this.notifyUsersChangeToggle.value = value
+      if(value){
+      this.setState({
+        notifyUserofChange: true
+        // StoryRecordsArray: storiesplaceholder
+      });
+    } else {
+      this.setState({
+        notifyUserofChange: false
+        // StoryRecordsArray: storiesplaceholder
+      });
+    }
+    }
+
     public isRenderReady(){
       this.setState({
         isRenderReady: true
@@ -379,7 +428,26 @@ interface MyAdminStates {
       workItemFormService.setFieldValues({"Custom.MSQuickStepSchema": stepsSchema});
       workItemFormService.setFieldValues({"Custom.MSQuickStepResponsesSchema": responsesSchema});
       workItemFormService.save();
+
+      if(this.state.almostDoneDDID === "1"){
+        //We only update schema
+        console.log("Resetting Nobody")
+        this.updateResponsesSchema();
+      }
+      if(this.state.almostDoneDDID === "2"){
+        //We reset everyone
+        console.log("Resetting Everyone")
+        this.resetAllChildItems();
+        this.updateResponsesSchema();
+      }
+      if(this.state.almostDoneDDID === "3"){
+        //We reset only thise not done
+        console.log("Resetting Those Not Done")
+        this.resetAllChildItemsNotCompleted();
+        this.updateResponsesSchema();
+    
     }
+  }
   
     public onDismissAlmostDoneChildItemsExistDialog(){
       this.isAlmostDoneChildItemsExistDialogOpen.value = false
@@ -469,6 +537,135 @@ interface MyAdminStates {
           // StoryRecordsArray: storiesplaceholder
         });
         console.log("There are " + count + " child items for this record")
+    }
+
+    public async resetAllChildItems(){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      )
+      //const project = await Project || ""
+      const client = getClient(WorkItemTrackingRestClient);
+      let relations = await workItemFormService.getWorkItemRelations();
+      // let jsonPatchDoc = [  {"op": "test","path": "/rev","value": 3},{"op": "add","path":"/fields/System.Title","value":"HERE IS MY NEW TITLE"}]
+      let jsonPatchDoc = [{"op": "add","path":"/fields/System.State","value":"To do"}]
+      for (let item of relations){
+         //console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+        if(item.rel == "System.LinkTypes.Hierarchy-Forward"){
+          var matches : number;
+          matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+          //client.getWorkItemTypeFieldsWithReferences
+          // let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
+          let workitem = await (client.getWorkItem(matches))
+          console.log(workitem)
+          client.updateWorkItem(jsonPatchDoc, workitem.id)
+          //client.updateWorkItem(jsonPatchDoc, workitem.id, "Master%20Template")
+          // workItemFormService.setFieldValues({"System.State": "To do"});
+          // workItemFormService.save();
+         }
+        }
+    }
+
+    public async resetAllChildItemsNotCompleted(){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      )
+      //const project = await Project || ""
+      const client = getClient(WorkItemTrackingRestClient);
+      let relations = await workItemFormService.getWorkItemRelations();
+      // let jsonPatchDoc = [  {"op": "test","path": "/rev","value": 3},{"op": "add","path":"/fields/System.Title","value":"HERE IS MY NEW TITLE"}]
+      let jsonPatchDoc = [{"op": "add","path":"/fields/System.State","value":"To do"}]
+      for (let item of relations){
+         //console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+        if(item.rel == "System.LinkTypes.Hierarchy-Forward"){
+          var matches : number;
+          matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+          let workitem = await (client.getWorkItem(matches))
+          var state : string;
+          state = workitem.fields["System.State"]
+          console.log(state)
+          if (state != "Yes - I fully meet this requirement" && state != "N/A - This requirement does not apply to me") {
+            console.log("Resetting. This state is :  " + state)
+            client.updateWorkItem(jsonPatchDoc, workitem.id)
+          }
+         }
+        }
+    }
+
+    // public async updateSchema(){
+    //   const workItemFormService = await SDK.getService<IWorkItemFormService>(
+    //     WorkItemTrackingServiceIds.WorkItemFormService
+    //   )
+    //   let responsesSchema = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponsesSchema")).toString();
+    //   let stepsSchema = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchema")).toString();
+    //   //const project = await Project || ""
+    //   const client = getClient(WorkItemTrackingRestClient);
+    //   let relations = await workItemFormService.getWorkItemRelations();
+    //   // let jsonPatchDoc = [  {"op": "test","path": "/rev","value": 3},{"op": "add","path":"/fields/System.Title","value":"HERE IS MY NEW TITLE"}]
+    //   let jsonPatchDoc = [{"op": "add","path":"/fields/System.State","value":"To do"}]
+    //   for (let item of relations){
+    //      console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+    //     if(item.rel == "System.LinkTypes.Hierarchy-Forward"){
+    //       var matches : number;
+    //       matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+    //       let workitem = await (client.getWorkItem(matches))
+    //       let state = workitem.fields["System.State"]
+    //       console.log(state)
+    //       if (state != "Yes - I fully meet this requirement" || "N/A - This requirement does not apply to me") {
+    //         client.updateWorkItem(jsonPatchDoc, workitem.id)
+    //       }
+    //      }
+    //     }
+    // }
+
+    public async updateResponsesSchema(){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      )
+      let responsesSchema = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponsesSchema")).toString();
+      let stepSchema = (await workItemFormService.getFieldValue("Custom.MSQuickStepSchema")).toString();
+      let cleanedSteps = this.cleanHTMLField(stepSchema);
+      let parsedJSON = JSON.parse(cleanedSteps)
+      console.log("HERE IS CLEANED STEPS:  " + parsedJSON)
+      let stepsplaceholder = new Array<ITaskItem>();
+      for (let entry of parsedJSON) {
+        // let AreaPath = new String(entry.fields["System.AreaPath"])
+        // let cleanedAreaPath = AreaPath.split("\\")[1]
+        stepsplaceholder.push({
+          name: entry.title,
+          type: entry.type
+        });
+      }
+      console.log("HERE ARE STEPS PLACEHOLDER: " + stepsplaceholder)
+      console.log("HERE IS MAYBE THE FIRST ITEM: " + stepsplaceholder[0].name)
+      let responseSchemaAsSuccess = responsesSchema.replace(/queued/g, "success"); 
+      // let successresponsesSchema = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponsesSchema")).toString();
+      //const project = await Project || ""
+      const client = getClient(WorkItemTrackingRestClient);
+      let relations = await workItemFormService.getWorkItemRelations();
+      // let jsonPatchDoc = [  {"op": "test","path": "/rev","value": 3},{"op": "add","path":"/fields/System.Title","value":"HERE IS MY NEW TITLE"}]
+      //let jsonPatchDoc = [{"op": "add","path":"/fields/Custom.MSQuickStepResponses","value":responsesSchema},{"op": "add","path":"/fields/Custom.MSQuickStepPercentComplete","value":0},{"op": "add","path":"/fields/Custom.MSQuickStepNextStepID","value":1},{"op": "add","path":"/fields/Custom.MSQuickStepNextStepNextStepText","value":stepsplaceholder[0].name},{"op": "add","path":"/fields/Custom.MSQuickStepIsAwaitingExternalAction","value":false}]
+      let jsonPatchDoc = [{"op": "add","path":"/fields/Custom.MSQuickStepResponses","value":""},{"op": "add","path":"/fields/Custom.MSQuickStepPercentComplete","value":0},{"op": "add","path":"/fields/Custom.MSQuickStepNextStepID","value":1},{"op": "add","path":"/fields/Custom.MSQuickStepIsAwaitingExternalAction","value":false},{"op": "add","path":"/fields/Custom.MSQuickStepNextStepText","value":stepsplaceholder[0].name}]
+      let jsonPatchDocSuccessState = [{"op": "add","path":"/fields/Custom.MSQuickStepResponses","value":responseSchemaAsSuccess}]
+      for (let item of relations){
+         console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+        if(item.rel == "System.LinkTypes.Hierarchy-Forward"){
+          var matches : number;
+          var state : string;
+          matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+          let workitem = await (client.getWorkItem(matches))
+          state = workitem.fields["System.State"]
+          if (state == "Yes - I fully meet this requirement") {
+            //replace with success state
+            client.updateWorkItem(jsonPatchDocSuccessState, workitem.id)
+          } 
+          else {
+            //replace with queued state
+            //console.log("This is not complete. Reset EVERYTHING.")
+            client.updateWorkItem(jsonPatchDoc, workitem.id)
+          }
+          
+         }
+        }
     }
 
 

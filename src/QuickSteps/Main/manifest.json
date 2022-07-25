@@ -25,6 +25,6 @@
         }
     ],
     "scopes": [
-        "vso.work"
+        "vso.work_write"
     ]
 }

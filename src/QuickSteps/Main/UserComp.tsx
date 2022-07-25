@@ -234,11 +234,15 @@ interface MyUserStates {
           console.log(matches);
           client.getWorkItemTypeFieldsWithReferences
           let workitem = client.getWorkItem(matches, undefined, undefined, new Date(), WorkItemExpand.Relations)
-          let UrlToWiki = (await workitem).fields["Custom.URLtoWiki"]
+          let UrlToWiki = (await workitem).fields["Custom.URLtoInstructions"]
+          const cleanedResponses =  UrlToWiki.replace(/(<([^>]+)>)/ig, ""); 
+          //second clean for reinsert of quotes
+          const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"')
+          const cleanedResponses3 = cleanedResponses.replace(/amp;/g, '')
           //let parentRelations = (await workitem).relations
-          console.log(UrlToWiki)
+          console.log(cleanedResponses3)
           this.setState({
-            wikiUrl: UrlToWiki,
+            wikiUrl: cleanedResponses3,
           });
       }
     }
