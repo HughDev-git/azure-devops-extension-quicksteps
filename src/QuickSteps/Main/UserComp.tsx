@@ -19,6 +19,7 @@ import {
   ProgressIndicator
 } from "@fluentui/react";
 import { Tooltip } from "azure-devops-ui/TooltipEx";
+import { Dialog } from "azure-devops-ui/Dialog";
 import { MessageCard, MessageCardSeverity } from "azure-devops-ui/MessageCard";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { showRootComponent } from "../../Common";
@@ -38,6 +39,7 @@ import { getClient } from "azure-devops-extension-api";
 import { Project } from "./CurrentProject"
 import "./quicksteps.scss";
 import { WorkItemExpand } from "azure-devops-node-api/interfaces/WorkItemTrackingInterfaces";
+import {DatePicker, IDatePickerStrings, defaultDatePickerStrings, addMonths, addYears, IDatePickerStyles, ThemeProvider,} from "@fluentui/react"
 
 
 initializeIcons();
@@ -54,9 +56,10 @@ interface MyUserStates {
     CBDoesNotApply: boolean;
     wikiUrl: string;
     FirstTimeFormOpen: boolean;
-    View: string
+    View: string;
+    showExternalActionDateDialog: boolean;
   }
-
+  
   export class QuickStepsUser extends React.Component<{}, MyUserStates> {
     constructor(props: {}) {
       super(props);
@@ -72,8 +75,12 @@ interface MyUserStates {
         CBDoesNotApply: false,
         wikiUrl: "",
         FirstTimeFormOpen: false,
-        View: ""
+        View: "",
+        showExternalActionDateDialog: false
+
+        
       };
+      
     }
   
   
@@ -103,7 +110,15 @@ interface MyUserStates {
     });
 }
     private workItemType = null
+    // private selectedDate = React.useState<Date | undefined>(new Date());
+    // private setSelectedDate = React.useState<Date | undefined>(new Date());
+    private newDate = new Date();
+    private selectedDate: Date | null | undefined = new Date()
+    private setSelectedDate = React.useState<Date | undefined>(new Date());
     private activityNotApply = new ObservableValue<boolean>(false);
+    // const [value, setValue] = React.useState<Date | undefined>();
+    // private date = new Date();
+    // private setDate = React.useState<Date | undefined>();
     //We need this placeholder in case there is no response schema due to being a new item. We will populate this later.
     // private responseSchemaPlaceholder = "";
   
@@ -190,12 +205,53 @@ interface MyUserStates {
               ""
             )}
           </div>
+          {this.state.showExternalActionDateDialog ? (
+                            <Dialog
+                                titleProps={{ text: "Real Quick..." }}
+                                
+                                footerButtonProps={[
+                                    {
+                                        text: "Done",
+                                        onClick: this.onConfirmExternalActionDateClick.bind(this),
+                                        primary: true
+                                    }
+                                ]}
+                                modal={true}
+                                onDismiss={this.onConfirmExternalActionDateClick.bind(this)}
+                            >
+                             <span>It looks like the next step "{this.state.nextStepText}" needs to be completed by someone else. To help us better track this, please provide the date you started this activity.</span>
+                             <div style={{paddingTop: "1em"}}>
+                             <DatePicker
+                                value={this.newDate}
+                                // onSelectDate={this.setSelectedDate as (date: Date | null | undefined)}
+                                onSelectDate={(date: Date | null | undefined) => this.onselectDate(date) }
+                                
+                                // onChange={(event) => (this.notApplyCheckbox(event)) }
+                              />
+                             </div>
+                            </Dialog>) : ("")}
         </div> 
       );} else {
         return (<div className="flex-row"></div>)
       }
     }
   
+    public onselectDate(date: Date | null | undefined){
+      this.selectedDate = date;
+    }
+
+    public async onConfirmExternalActionDateClick(){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      )
+      workItemFormService.setFieldValues({"Custom.MSQuickStepExternalActionDate": this.selectedDate || new Date()});
+      this.setState({
+        showExternalActionDateDialog: false
+        // StoryRecordsArray: storiesplaceholder
+      });
+
+    }
+
     public async determineIfNotApply(){
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService
@@ -252,12 +308,33 @@ interface MyUserStates {
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService
       )
+      let stepsplaceholder = new Array<IPipelineItem<{}>>();
       let responses = (await UserResponeItemsLocal)
+      if (!this.state.FirstTimeFormOpen){
+        for (let entry of responses) {
+            entry.status = "queued";
+        }
+        let stepsplaceholder = new Array<IPipelineItem<{}>>();
+        for (let entry of responses) {
+          stepsplaceholder.push({
+            step: entry.step,
+            title: entry.title,
+            status: entry.status,
+            type: entry.type
+          });
+        }
+        let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
+        this.setState({
+          StepRecordsItemProvider: arrayItemProvider
+          // StoryRecordsArray: storiesplaceholder
+        });
+      }
+      this.prepStatesOnNAClick(responses)
       let currentState = (await workItemFormService.getFieldValue("System.State")).toString();
       console.log(currentState)
       this.activityNotApply.value = checked
       if (checked){
-        workItemFormService.setFieldValues({"System.State": "N/A - This requirement does not apply to me"});
+        workItemFormService.setFieldValues({"System.State": "N/A - This requirement does not apply to me","Custom.MSQuickStepPercentComplete": this.state.percentComplete,"Custom.MSQuickStepNextStepID":this.state.nextStep, "Custom.MSQuickStepNextStepText": this.state.nextStepText,"Custom.MSQuickStepIsAwaitingExternalAction": false});
         this.setState({
           CBDoesNotApply: true
           // StoryRecordsArray: storiesplaceholder
@@ -370,16 +447,15 @@ interface MyUserStates {
   //   }
   // }
     public async setMarks(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
-      //SET MARKS NEW START
-      //let previousItemStatus = responses[e.index - 1].status ?? ""
-      // const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      //   WorkItemTrackingServiceIds.WorkItemFormService)
       let selectedItemStatus = e.data.status
       if(selectedItemStatus !== "success") {
         //Can mark as success since first item
         if(e.index === 0){
           console.log("Entered Zero If")
           responses[e.index].status = "success";
+          if(responses[e.index + 1].type === "external"){
+            responses[e.index + 1].status = "running";
+          }
           this.prepStates(e, responses)
           this.checkIfNextItemIsExternal(e, responses)
           return
@@ -404,7 +480,7 @@ interface MyUserStates {
         this.checkIfNextItemIsExternal(e, responses)
         return
         }
-      }
+        }
       if (selectedItemStatus === "success") {
         console.log("Entered success if")
         //First check if the item being removed from success is an external action so we can set back to running
@@ -425,6 +501,7 @@ interface MyUserStates {
           responses[e.index].status = "queued";
           this.prepStates(e, responses)
           this.checkIfCurrentItemIsExternal(e, responses);
+          this.checkIfNextItemIsExternal(e, responses)
         }
         //We now need to go and set forward items to que status
           for (let entry of responses) {
@@ -438,22 +515,8 @@ interface MyUserStates {
          this.prepStates(e, responses)
          //this.checkIfNextItemIsExternal(e, responses)
         }
-      // //SET MARKS NEW END
-      //Account for next item being external
-      // if (responses.length > e.index + 1) {
-      //   if (
-      //     responses[e.index + 1].type === "external" &&
-      //     responses[e.index].status === "success"
-      //   ) {
-      //     responses[e.index + 1].status = "running";
-      //     this.setState({
-      //       isCoachMarkVisible: true
-      //       // StoryRecordsArray: storiesplaceholder
-      //     });
-      //     setTimeout(this.onDismissCoach.bind(this), 20000);
-      //   }
-      // }
     }
+
     public async determinePercentComplete(){
       const responses = (await UserResponeItemsLocal);
       if (responses.length == 0){
@@ -492,7 +555,7 @@ interface MyUserStates {
             });
           }
           let percentComplete = completed / total;
-          console.log("Total: "+ total +" ||||| "+ "Completed: "+ completed)
+          //console.log("Total: "+ total +" ||||| "+ "Completed: "+ completed)
           this.setState({
             nextStep: nextStep,
             totalSteps: total,
@@ -500,6 +563,37 @@ interface MyUserStates {
             percentComplete: percentComplete
           });
     }
+    public prepStatesOnNAClick(responses: IPipelineItem<{}>[]) {
+      //Prep states
+      let total = responses.length;
+      let completed = responses.filter((a) => a.status === "success").length;
+      // let nextStep = (e.data.type === "external" && e.data.status === "success") ? e.index + 1:e.index + 2;
+      let nextStep = 1
+      //let nextStep = e.index + 2;
+      //Account for no next item
+      if (responses.length < nextStep) {
+        this.setState({
+          nextStepText: "No Next Step",
+        });
+      
+      // } else {
+      //   this.setState({
+      //     nextStepText: responses[nextStep - 1].title,
+      //   });
+      } else {
+        this.setState({
+          nextStepText: responses[nextStep - 1].title,
+        });
+      }
+      let percentComplete = completed / total;
+      //console.log("Total: "+ total +" ||||| "+ "Completed: "+ completed)
+      this.setState({
+        nextStep: nextStep,
+        totalSteps: total,
+        completedSteps: completed,
+        percentComplete: percentComplete
+      });
+}
   
     public determineNextStep(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
       if(e.data.type === "external" && e.data.status === "success"){
@@ -524,10 +618,11 @@ interface MyUserStates {
           responses[e.index].status = "running";
           workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
           this.setState({
-            isCoachMarkVisible: true
+            isCoachMarkVisible: true,
+            showExternalActionDateDialog: true
             // StoryRecordsArray: storiesplaceholder
           });
-          setTimeout(this.onDismissCoach.bind(this), 20000);
+          setTimeout(this.onDismissCoach.bind(this), 60000);
       }
     }
   
@@ -543,11 +638,13 @@ interface MyUserStates {
         if (responses[e.index + 1].type === "external" && responses[e.index].status === "success") {
           workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
           this.setState({
-            isCoachMarkVisible: true
+            isCoachMarkVisible: true,
+            showExternalActionDateDialog: true
             // StoryRecordsArray: storiesplaceholder
           });
-          setTimeout(this.onDismissCoach.bind(this), 20000);
+          setTimeout(this.onDismissCoach.bind(this), 60000);
         } else {
+          console.log("Setting External Action to FALSE")
           workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": false});
         }
     }

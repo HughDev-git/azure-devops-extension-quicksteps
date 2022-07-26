@@ -317,21 +317,21 @@ interface MyAdminStates {
                               />
                                   {this.state.almostDoneDDID === "1" ?
                                   <div>
-                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended if you didn't reorder steps and only made slight changes</div>
-                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Reordered steps not previously completed might be marked completed now</div>
-                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />If a critical step detail has changed, the user might be unaware</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended if you <b>ONLY</b> edited the names of steps</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Should not be used if you reordered steps</div>
+                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Should not be used if you added or removed steps</div>
                                   </div>
                                   :this.state.almostDoneDDID === "2" ?
                                   <div>
                                   <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended when you need everyone to reasses their onboarding activity</div>
-                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Users who completed the activity will need to revalidate their steps</div>
-                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Users who completed the onboarding activity will need to revalidate their steps</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />All users will start from Step 1</div>
+                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Any existing progress users have made will be reset</div>
                                   </div>
                                   :this.state.almostDoneDDID === "3" ?
                                   <div>
-                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended when you don't need users already done to redo efforts</div>
-                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Users already done will not need to redo their activity</div>
-                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />User almost done with their steps will still need to start over</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Recommended when you only need to reset users who have not finished</div>
+                                  <div className="noteDiv"><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />Users who are complete <b>OR</b> marked as N/A will not be reset</div>
+                                  <div><Status {...Statuses.Skipped} key="skipped"size={StatusSize.s}className="skippedAlmostDoneIcon" />All users will still have the newest steps published to their record</div>
                                   </div>
                                   : ""}
                                   {/* <div className="notifyUsers">
@@ -447,6 +447,8 @@ interface MyAdminStates {
         this.updateResponsesSchema();
     
     }
+    this.isAlmostDoneChildItemsExistDialogOpen.value = false
+    this.isAlmostDoneChildItemsNotExistDialogOpen.value = false
   }
   
     public onDismissAlmostDoneChildItemsExistDialog(){
