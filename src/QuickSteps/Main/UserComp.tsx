@@ -520,7 +520,7 @@ interface MyUserStates {
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService)
       if (responses[e.index].type === "external") {
-          //console.log("Setting next item as running")
+          console.log("Setting next item as running")
           responses[e.index].status = "running";
           workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
           this.setState({
@@ -536,7 +536,7 @@ interface MyUserStates {
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService)
       if (responses[e.index + 1].type === "external") {
-          //console.log("Setting next item as running")
+          console.log("Setting next item as running")
           responses[e.index + 1].status = "running";
     }
       if (responses.length > e.index + 1) {

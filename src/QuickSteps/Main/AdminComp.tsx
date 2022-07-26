@@ -10,7 +10,7 @@ import {
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { showRootComponent } from "../../Common";
 import * as SDK from "azure-devops-extension-sdk";
-import {ITaskItem} from "./StepSchema"
+import {ITaskItem, ITaskItemLimited} from "./StepSchema"
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
 import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { ObservableValue, Observable } from "azure-devops-ui/Core/Observable";
@@ -493,7 +493,16 @@ interface MyAdminStates {
     public async onClickRemove() {
       let items = await allSteps
       items.splice(this.selection.value[0].beginIndex, 1);
-      this.updateSchemaDraft();
+      let stepsplaceholder = new Array<ITaskItem>();
+      items.forEach((value, index) => {
+        let step = index + 1
+        stepsplaceholder.push({
+          step: step.toString(),
+          name: value.name,
+          type: value.type
+        });
+      })
+      this.updateSchemaDraft(stepsplaceholder);
       let arrayItemProvider = new ArrayItemProvider(items);
       this.setState({
         StepRecordsItemProvider: arrayItemProvider
@@ -502,7 +511,6 @@ interface MyAdminStates {
     }
   
     public async onCreateClick() {
-      this.updateSchemaDraft();
       let items = await allSteps
       let arrayItemProvider = new ArrayItemProvider(items);
       items.push({
@@ -510,6 +518,16 @@ interface MyAdminStates {
         name: this.newStepTitle.value || "",
         type: this.newStepType.value
       });
+      let stepsplaceholder = new Array<ITaskItem>();
+      items.forEach((value, index) => {
+        let step = index + 1
+        stepsplaceholder.push({
+          step: step.toString(),
+          name: value.name,
+          type: value.type
+        });
+      })
+      this.updateSchemaDraft(stepsplaceholder);
       this.setState({
         StepRecordsItemProvider: arrayItemProvider
         // StoryRecordsArray: storiesplaceholder
@@ -626,7 +644,7 @@ interface MyAdminStates {
       let cleanedSteps = this.cleanHTMLField(stepSchema);
       let parsedJSON = JSON.parse(cleanedSteps)
       console.log("HERE IS CLEANED STEPS:  " + parsedJSON)
-      let stepsplaceholder = new Array<ITaskItem>();
+      let stepsplaceholder = new Array<ITaskItemLimited>();
       for (let entry of parsedJSON) {
         // let AreaPath = new String(entry.fields["System.AreaPath"])
         // let cleanedAreaPath = AreaPath.split("\\")[1]
@@ -669,14 +687,14 @@ interface MyAdminStates {
     }
 
 
-    public async updateSchemaDraft(){
+    public async updateSchemaDraft(stepsplaceholder: ITaskItem[]){
       const workItemFormService = await SDK.getService<IWorkItemFormService>(
         WorkItemTrackingServiceIds.WorkItemFormService
       )
-      let items = await allSteps
+      // let items = await allSteps
       let responseSchemaDraft = new Array<IResponseItem<{}>>();
       let stepsSchemaDraft = new Array()
-      for(let entry of items){
+      for(let entry of stepsplaceholder){
         responseSchemaDraft.push({
           step: entry.step,
           status: "queued"
@@ -792,21 +810,30 @@ interface MyAdminStates {
         items[this.selection.value[0].beginIndex + 1],
         items[this.selection.value[0].beginIndex]
       ];
-      this.updateSchemaDraft();
       // this.setState({
       //   selectedItem: this.state.selectedItem
       //   // StoryRecordsArray: storiesplaceholder
       // });
       this.selection.select(this.selection.value[0].endIndex);
-      for (let entry of items) {
-        console.log(entry);
-        // let AreaPath = new String(entry.fields["System.AreaPath"])
-        // let cleanedAreaPath = AreaPath.split("\\")[1]
+      // for (let entry of items) {
+      //   console.log(entry);
+      //   // let AreaPath = new String(entry.fields["System.AreaPath"])
+      //   // let cleanedAreaPath = AreaPath.split("\\")[1]
+      //   stepsplaceholder.push({
+      //     step: entry.,
+      //     name: entry.name,
+      //     type: entry.type
+      //   });
+      // }
+      items.forEach((value, index) => {
+        let step = index + 1
         stepsplaceholder.push({
-          name: entry.name,
-          type: entry.type
+          step: step.toString(),
+          name: value.name,
+          type: value.type
         });
-      }
+      })
+      this.updateSchemaDraft(stepsplaceholder);
       let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
       this.setState({
         StepRecordsItemProvider: arrayItemProvider
@@ -829,22 +856,21 @@ interface MyAdminStates {
         items[this.selection.value[0].beginIndex - 1],
         items[this.selection.value[0].beginIndex]
       ];
-      this.updateSchemaDraft();
       this.selection.select(this.selection.value[0].endIndex);
-      for (let entry of items) {
-        console.log(entry);
-        // let AreaPath = new String(entry.fields["System.AreaPath"])
-        // let cleanedAreaPath = AreaPath.split("\\")[1]
+      items.forEach((value, index) => {
+        let step = index + 1
         stepsplaceholder.push({
-          name: entry.name,
-          type: entry.type
+          step: step.toString(),
+          name: value.name,
+          type: value.type
         });
-      }
+      })
       let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
       this.setState({
         StepRecordsItemProvider: arrayItemProvider
         // StoryRecordsArray: storiesplaceholder
       });
+      this.updateSchemaDraft(stepsplaceholder);
       let a = this.selection.value[0].beginIndex;
       this.selection.select(a - 1);
       this.determineButtonsStates();
@@ -858,6 +884,7 @@ interface MyAdminStates {
         // let AreaPath = new String(entry.fields["System.AreaPath"])
         // let cleanedAreaPath = AreaPath.split("\\")[1]
         stepsplaceholder.push({
+          step: entry.step,
           name: entry.name,
           type: entry.type
         });

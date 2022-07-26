@@ -9,9 +9,16 @@ import * as SDK from "azure-devops-extension-sdk";
 import { Project } from "./CurrentProject";
 
 export interface ITaskItem {
+  step: string;
   name: string;
   type: string;
 }
+
+export interface ITaskItemLimited {
+  name: string;
+  type: string;
+}
+
 interface SchemaInterface {
   step: string,
   title: string,
