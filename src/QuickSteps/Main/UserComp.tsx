@@ -112,9 +112,9 @@ interface MyUserStates {
     private workItemType = null
     // private selectedDate = React.useState<Date | undefined>(new Date());
     // private setSelectedDate = React.useState<Date | undefined>(new Date());
-    private newDate = new Date();
-    private selectedDate: Date | null | undefined = new Date()
-    private setSelectedDate = React.useState<Date | undefined>(new Date());
+     private newDate = new Date();
+     private selectedDate: Date | null | undefined = new Date()
+    //  private setSelectedDate = React.useState<Date | undefined>(new Date());
     private activityNotApply = new ObservableValue<boolean>(false);
     // const [value, setValue] = React.useState<Date | undefined>();
     // private date = new Date();
