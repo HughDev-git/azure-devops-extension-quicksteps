@@ -334,7 +334,7 @@ interface MyUserStates {
       console.log(currentState)
       this.activityNotApply.value = checked
       if (checked){
-        workItemFormService.setFieldValues({"System.State": "N/A - This requirement does not apply to me","Custom.MSQuickStepPercentComplete": this.state.percentComplete,"Custom.MSQuickStepNextStepID":this.state.nextStep, "Custom.MSQuickStepNextStepText": this.state.nextStepText,"Custom.MSQuickStepIsAwaitingExternalAction": false});
+        workItemFormService.setFieldValues({"System.State": "N/A - This requirement does not apply to me","Custom.MSQuickStepPercentComplete": 1,"Custom.MSQuickStepNextStepID":this.state.nextStep, "Custom.MSQuickStepNextStepText": this.state.nextStepText,"Custom.MSQuickStepIsAwaitingExternalAction": false});
         this.setState({
           CBDoesNotApply: true
           // StoryRecordsArray: storiesplaceholder

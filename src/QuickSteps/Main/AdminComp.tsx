@@ -674,7 +674,7 @@ interface MyAdminStates {
           matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
           let workitem = await (client.getWorkItem(matches))
           state = workitem.fields["System.State"]
-          if (state == "Yes - I fully meet this requirement") {
+          if (state != "Yes - I fully meet this requirement" && state != "N/A - This requirement does not apply to me") {
             //replace with success state
             client.updateWorkItem(jsonPatchDocSuccessState, workitem.id)
           } 
