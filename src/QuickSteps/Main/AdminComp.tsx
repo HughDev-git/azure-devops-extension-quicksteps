@@ -567,7 +567,7 @@ interface MyAdminStates {
       const client = getClient(WorkItemTrackingRestClient);
       let relations = await workItemFormService.getWorkItemRelations();
       // let jsonPatchDoc = [  {"op": "test","path": "/rev","value": 3},{"op": "add","path":"/fields/System.Title","value":"HERE IS MY NEW TITLE"}]
-      let jsonPatchDoc = [{"op": "add","path":"/fields/System.State","value":"To do"}]
+      let jsonPatchDoc = [{"op": "add","path":"/fields/System.State","value":"No Action Taken"}]
       for (let item of relations){
          //console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
         if(item.rel == "System.LinkTypes.Hierarchy-Forward"){
@@ -593,7 +593,7 @@ interface MyAdminStates {
       const client = getClient(WorkItemTrackingRestClient);
       let relations = await workItemFormService.getWorkItemRelations();
       // let jsonPatchDoc = [  {"op": "test","path": "/rev","value": 3},{"op": "add","path":"/fields/System.Title","value":"HERE IS MY NEW TITLE"}]
-      let jsonPatchDoc = [{"op": "add","path":"/fields/System.State","value":"To do"}]
+      let jsonPatchDoc = [{"op": "add","path":"/fields/System.State","value":"No Action Taken"}]
       for (let item of relations){
          //console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
         if(item.rel == "System.LinkTypes.Hierarchy-Forward"){
